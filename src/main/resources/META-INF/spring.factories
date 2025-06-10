@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.jeesoul.ai.model.config.HttpConfig, \
+com.jeesoul.ai.model.config.AiAutoConfiguration
