@@ -41,10 +41,11 @@
 </repositories>
 
 <dependencies>
+<!--目前最新版: 1.0.0-->
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>${latest.version}</version>
+    <version>1.0.0</version>
 </dependency>
 
 <!--集成响应式编程-->
