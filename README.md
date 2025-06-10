@@ -25,7 +25,36 @@
 - 支持系统提示词和思考模式
 - 基于Spring Boot的自动配置
 
+## 项目结构
 
+本项目采用模块化设计，主要包含以下模块：
+
+- **FactoryModelService**: 提供统一的模型服务工厂，支持根据枚举值切换不同的模型服务。
+- **AiService**: 定义了大模型服务的统一接口，包括同步和流式对话方法。
+- **ModelRequestVO/ModelResponseVO**: 请求和响应的数据模型，支持参数透传和自定义配置。
+
+### 项目结构图
+
+```
++-------------------+
+|   FactoryModelService  |
++-------------------+
+         |
+         v
++-------------------+
+|   AiService       |
++-------------------+
+         |
+         v
++-------------------+
+|   ModelRequestVO  |
++-------------------+
+         |
+         v
++-------------------+
+|   ModelResponseVO |
++-------------------+
+```
 
 ## 快速开始
 
@@ -166,9 +195,17 @@ public void streamChat() {
 
 ## 贡献指南
 
-欢迎提交Issue和Pull Request来帮助改进这个项目。
+欢迎提交Issue和Pull Request来帮助改进这个项目。更多信息请访问 [贡献指南](https://github.com/jeesoul/jeesoul-ai-model/blob/main/CONTRIBUTING.md)。
+
+## 作者介绍
+
+本项目由 [dongxueyong](https://github.com/dongxueyong) 开发和维护。如有任何问题或建议，欢迎通过 [邮箱](mailto:3248838607@qq.com) 联系。
+
+## 项目介绍
+
+本项目旨在提供一个统一的接口，方便开发者快速集成多种AI大模型服务。通过简单的配置和调用，开发者可以轻松实现与大模型的交互，无需关注底层实现细节。更多信息请访问 [项目主页](https://github.com/jeesoul/jeesoul-ai-model)。
 
 ## 许可证
 
-本项目采用 MIT 许可证。
+本项目采用 MIT 许可证。详情请查看 [LICENSE](https://opensource.org/licenses/MIT) 文件。
 
