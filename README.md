@@ -2,6 +2,20 @@
 
 一个基于Spring Boot的AI大模型服务集成框架，支持多种大模型服务的统一接入，包括讯飞星火、通义千问、ChatGPT、和DeepSeek等。
 
+## 技术栈
+
+| 技术/框架                | 版本         | 说明                         |
+|--------------------------|--------------|------------------------------|
+| Java                     | 8            | 项目主语言                   |
+| Spring Boot              | 2.7.17       | 应用框架，简化开发与配置     |
+| Spring Web/WebFlux       | 2.7.17       | 支持同步与响应式 Web 服务    |
+| Lombok                   | 最新         | 简化 Java 代码（如 getter/setter）|
+| Hutool                   | 5.8.25       | Java 工具类库                |
+| SLF4J                    | 1.7.36       | 日志门面                     |
+| Apache Commons Lang3     | 3.12.0       | 常用工具类                   |
+| Maven                    | -            | 项目构建与依赖管理           |
+| JUnit（Spring Boot Test）| 2.7.17       | 单元测试                     |
+
 ## 功能特性
 
 - 支持多种大模型服务统一接入
@@ -10,6 +24,8 @@
 - 统一的异常处理和日志记录
 - 支持系统提示词和思考模式
 - 基于Spring Boot的自动配置
+
+
 
 ## 快速开始
 
@@ -61,7 +77,6 @@ public void chat() {
     params.put("max_tokens", 2000);
     
     ModelRequestVO request = new ModelRequestVO()
-                // 必填参数 可以参考 com.iflytek.ai.constant.AiModel
         .setModelName("qWen")  // 或 "spark", "deepSeek"
         .setModel("qwen-turbo")  // 具体模型版本
         .setPrompt("你好，请介绍一下自己")
@@ -82,7 +97,7 @@ public void streamChat() {
     // 使用链式调用创建请求对象
     ModelRequestVO request = new ModelRequestVO()
         .setModelName("spark")
-        .setModel("spark-v2")
+        .setModel("x1")
         .setPrompt("写一首诗");
     
     AiService aiService = FactoryModelService.create(request.getModelName());
@@ -115,14 +130,14 @@ public void streamChat() {
 
 ### ModelRequestVO
 
-| 参数名 | 类型 | 是否必填 | 说明 |
-|--------|------|----------|------|
+| 参数名 | 类型 | 是否必填 | 说明                                |
+|--------|------|----------|-----------------------------------|
 | modelName | String | 是 | 模型名称（qWen/chatgpt/spark/deepSeek） |
-| model | String | 是 | 具体模型版本 |
-| systemPrompt | String | 否 | 系统提示词 |
-| prompt | String | 是 | 用户提示词 |
-| enableThinking | boolean | 否 | 是否开启思考模式 |
-| params | Map<String,Object> | 否 | 自定义参数 |
+| model | String | 是 | 具体模型版本                            |
+| systemPrompt | String | 否 | 系统提示词                             |
+| prompt | String | 是 | 用户提示词                             |
+| enableThinking | boolean | 否 | 是否开启思考模式 (后期加入)                   |
+| params | Map<String,Object> | 否 | 自定义参数                             |
 
 ### ModelResponseVO
 
