@@ -32,6 +32,15 @@
 ### 1. 添加依赖
 
 ```xml
+<!--建议引入中央仓库地址-->
+<repositories>
+    <repository>
+        <id>central</id>
+        <url>https://repo.maven.apache.org/maven2/</url>
+    </repository>
+</repositories>
+
+<dependencies>
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
@@ -43,7 +52,7 @@
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-webflux</artifactId>
 </dependency>
-
+</dependencies>
 ```
 
 ### 2. 配置参数
