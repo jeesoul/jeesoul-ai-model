@@ -1,5 +1,6 @@
 package com.jeesoul.ai.model.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -31,10 +32,12 @@ public class HttpChatGPTChatRequest {
     /**
      * top_p
      */
+    @JsonProperty("top_p")
     private Double topP;
     /**
      * 最大token数
      */
+    @JsonProperty("max_tokens")
     private Integer maxTokens;
 
     /**

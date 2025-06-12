@@ -1,5 +1,6 @@
 package com.jeesoul.ai.model.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class HttpSparkChatRequest {
     /**
      * 最大token数
      */
+    @JsonProperty("max_tokens")
     private Integer maxTokens;
 
     /**

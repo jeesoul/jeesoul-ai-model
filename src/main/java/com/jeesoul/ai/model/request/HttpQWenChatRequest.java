@@ -30,6 +30,7 @@ public class HttpQWenChatRequest {
     /**
      * 最大token数
      */
+    @JsonProperty("max_tokens")
     private Integer maxTokens;
 
     /**
@@ -40,7 +41,7 @@ public class HttpQWenChatRequest {
      * 思考开关
      */
     @JsonProperty("chat_template_kwargs")
-    private ChatThink chatTemplateKwargs;
+    private ChatThink chatTemplateKwargs = new ChatThink();
 
     /**
      * 思考参数设置
