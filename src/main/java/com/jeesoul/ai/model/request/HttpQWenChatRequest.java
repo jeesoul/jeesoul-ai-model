@@ -38,10 +38,32 @@ public class HttpQWenChatRequest {
      */
     private boolean stream;
     /**
+     * stream_options
+     */
+    @JsonProperty("stream_options")
+    private StreamOptions streamOptions;
+    /**
+     * enable_thinking为true来开启思考模式
+     */
+    @JsonProperty("enable_thinking")
+    private boolean enableThinking;
+    /**
      * 思考开关
      */
     @JsonProperty("chat_template_kwargs")
     private ChatThink chatTemplateKwargs = new ChatThink();
+
+    /**
+     * stream_options
+     */
+    @Data
+    public static class StreamOptions {
+        /**
+         * include_usage
+         */
+        @JsonProperty("include_usage")
+        private Boolean includeUsage;
+    }
 
     /**
      * 思考参数设置

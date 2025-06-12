@@ -1,6 +1,7 @@
 package com.jeesoul.ai.model.response;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -29,7 +30,7 @@ import java.util.Map;
  * @date 2025-06-10
  */
 @Slf4j
-public class StreamQWenResponse extends StreamBaseResponse<String> {
+public class StreamQWenResponse extends StreamBaseResponse<ResultContent> {
 
     /**
      * 构造函数
@@ -73,7 +74,7 @@ public class StreamQWenResponse extends StreamBaseResponse<String> {
      * @return 提取的文本内容流，如果无法提取则返回空流
      */
     @Override
-    protected Flux<String> extractContent(Map<String, Object> responseMap) {
+    protected Flux<ResultContent> extractContent(Map<String, Object> responseMap) {
         // 检查choices字段
         if (!responseMap.containsKey("choices") || !(responseMap.get("choices") instanceof List)) {
             return Flux.empty();
@@ -99,13 +100,16 @@ public class StreamQWenResponse extends StreamBaseResponse<String> {
         if (delta == null) {
             return Flux.empty();
         }
+        ResultContent response = new ResultContent();
         String content = null;
         if (delta.containsKey("content")) {
             content = (String) delta.get("content");
+            response.setThinking(Boolean.FALSE);
         } else if (delta.containsKey("reasoning_content")) {
             content = (String) delta.get("reasoning_content");
+            response.setThinking(Boolean.TRUE);
         }
-
-        return content != null ? Flux.just(content) : Flux.empty();
+        response.setContent(content);
+        return content != null ? Flux.just(response) : Flux.empty();
     }
 }

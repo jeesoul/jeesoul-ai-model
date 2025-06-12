@@ -3,11 +3,13 @@ package com.jeesoul.ai.model.service;
 import com.jeesoul.ai.model.config.AiProperties;
 import com.jeesoul.ai.model.constant.AiModel;
 import com.jeesoul.ai.model.constant.AiRole;
+import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.exception.AiException;
 import com.jeesoul.ai.model.request.HttpQWenChatRequest;
 import com.jeesoul.ai.model.response.HttpQWenChatResponse;
 import com.jeesoul.ai.model.response.StreamQWenResponse;
 import com.jeesoul.ai.model.util.HttpUtils;
+import com.jeesoul.ai.model.util.JsonUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
@@ -63,12 +65,13 @@ public class QWenService implements AiService {
     @Override
     public Flux<ModelResponseVO> streamChat(ModelRequestVO request) throws AiException {
         return sendStreamRequest(request)
-                .map(content -> new ModelResponseVO(content, AiModel.Q_WEN.getModelName()));
+                .map(content -> new ModelResponseVO(content.getContent(), content.getThinking(),
+                        AiModel.Q_WEN.getModelName()));
     }
 
     @Override
     public Flux<String> streamChatStr(ModelRequestVO request) throws AiException {
-        return sendStreamRequest(request);
+        return sendStreamRequest(request).map(JsonUtils::toJson);
     }
 
     /**
@@ -82,6 +85,7 @@ public class QWenService implements AiService {
         HttpQWenChatRequest chatRequest = new HttpQWenChatRequest();
         // 添加思考提示（如果启用）
         if (request.isEnableThinking()) {
+            chatRequest.setEnableThinking(Boolean.TRUE);
             HttpQWenChatRequest.ChatThink chatThink = new HttpQWenChatRequest.ChatThink();
             chatThink.setEnableThinking(Boolean.TRUE);
             chatRequest.setChatTemplateKwargs(chatThink);
@@ -143,9 +147,9 @@ public class QWenService implements AiService {
      * @param request 请求参数
      * @return 流式响应
      */
-    private Flux<String> sendStreamRequest(ModelRequestVO request) {
+    private Flux<ResultContent> sendStreamRequest(ModelRequestVO request) {
         HttpQWenChatRequest chatRequest = buildChatRequest(request, true);
-        StreamHttpUtils.StreamHttpConfig<HttpQWenChatRequest, String> config = createStreamConfig();
+        StreamHttpUtils.StreamHttpConfig<HttpQWenChatRequest, ResultContent> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getQwen().getEndpoint(),
                 chatRequest,
@@ -172,8 +176,8 @@ public class QWenService implements AiService {
      *
      * @return 流式配置对象
      */
-    private StreamHttpUtils.StreamHttpConfig<HttpQWenChatRequest, String> createStreamConfig() {
-        return StreamHttpUtils.StreamHttpConfig.<HttpQWenChatRequest, String>builder()
+    private StreamHttpUtils.StreamHttpConfig<HttpQWenChatRequest, ResultContent> createStreamConfig() {
+        return StreamHttpUtils.StreamHttpConfig.<HttpQWenChatRequest, ResultContent>builder()
                 .apiKey(aiProperties.getQwen().getApiKey())
                 .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
                 .responseProcessor(new StreamQWenResponse())
