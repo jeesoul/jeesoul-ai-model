@@ -70,11 +70,11 @@
 </repositories>
 
 <dependencies>
-<!--已发布到 maven 中央仓库 目前最新版: 1.0.1-->
+<!--已发布到 maven 中央仓库 目前最新版: 1.0.2-->
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 
 <!--集成响应式编程-->
