@@ -80,6 +80,12 @@ public class QWenService implements AiService {
      */
     private HttpQWenChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpQWenChatRequest chatRequest = new HttpQWenChatRequest();
+        // 添加思考提示（如果启用）
+        if (request.isEnableThinking()) {
+            HttpQWenChatRequest.ChatThink chatThink = new HttpQWenChatRequest.ChatThink();
+            chatThink.setEnableThinking(Boolean.TRUE);
+            chatRequest.setChatTemplateKwargs(chatThink);
+        }
         chatRequest.setModel(request.getModel());
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);

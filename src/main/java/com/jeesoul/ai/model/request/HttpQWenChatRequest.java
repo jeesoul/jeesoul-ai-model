@@ -37,10 +37,22 @@ public class HttpQWenChatRequest {
      */
     private boolean stream;
     /**
-     * enable_thinking为true来开启思考模式
+     * 思考开关
      */
-    @JsonProperty("enable_thinking")
-    private boolean enableThinking;
+    @JsonProperty("chat_template_kwargs")
+    private ChatThink chatTemplateKwargs;
+
+    /**
+     * 思考参数设置
+     */
+    @Data
+    public static class ChatThink {
+        /**
+         * enable_thinking为true来开启思考模式
+         */
+        @JsonProperty("enable_thinking")
+        private boolean enableThinking;
+    }
 
     /**
      * 消息对象，包含角色和内容

@@ -33,7 +33,10 @@ public class ModelRequestVO {
      * 提示词
      */
     private String prompt;
-
+    /**
+     * 是否开启思考
+     */
+    private boolean enableThinking;
     /**
      * 其他参数
      */

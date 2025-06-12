@@ -70,11 +70,11 @@
 </repositories>
 
 <dependencies>
-<!--目前最新版: 1.0.0-->
+<!--已发布到 maven 中央仓库 目前最新版: 1.0.1-->
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 
 <!--集成响应式编程-->
@@ -175,7 +175,7 @@ public void streamChat() {
 | model | String | 是 | 具体模型版本                            |
 | systemPrompt | String | 否 | 系统提示词                             |
 | prompt | String | 是 | 用户提示词                             |
-| enableThinking | boolean | 否 | 是否开启思考模式 (后期加入)                   |
+| enableThinking | boolean | 否 | 是否开启思考模式 (支持QWen系列快、慢思考)          |
 | params | Map<String,Object> | 否 | 自定义参数                             |
 
 ### ModelResponseVO
