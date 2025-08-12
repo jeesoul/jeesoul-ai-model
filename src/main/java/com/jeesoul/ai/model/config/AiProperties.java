@@ -35,24 +35,14 @@ public class AiProperties {
     @Data
     public static class SparkProperties {
         /**
-         * 应用 ID
-         */
-        private String appId;
-
-        /**
          * API 密钥
          */
         private String apiKey;
 
         /**
-         * API 密钥对应的密钥
-         */
-        private String apiSecret;
-
-        /**
          * WebSocket 服务端点
          */
-        private String endpoint = "wss://spark-api.xf-yun.com/v2.1/chat";
+        private String endpoint = "https://spark-api-open.xf-yun.com/v2/chat/completions";
     }
 
     /**
@@ -64,11 +54,6 @@ public class AiProperties {
          * API 密钥
          */
         private String apiKey;
-
-        /**
-         * API 密钥对应的密钥
-         */
-        private String apiSecret;
 
         /**
          * 服务端点

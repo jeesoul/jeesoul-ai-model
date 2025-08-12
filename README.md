@@ -126,11 +126,11 @@ src/main/java/com/jeesoul/ai/model/
 </repositories>
 
 <dependencies>
-<!--已发布到 maven 中央仓库 目前最新版: 1.0.3-->
+<!--已发布到 maven 中央仓库 目前最新版: 1.0.4-->
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 
 <!--集成响应式编程-->
@@ -148,78 +148,185 @@ src/main/java/com/jeesoul/ai/model/
 ```yaml
 ai:
   qwen:
-    api-key: your-api-key
-    endpoint: https://api.qwen.com/v1/chat/completions
+    apiKey: your-qwen-api-key
+    endpoint: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
   spark:
-    api-key: your-api-key
-    endpoint: https://api.spark.com/v1/chat/completions
+    apiKey: your-spark-api-key
+    endpoint: https://spark-api-open.xf-yun.com/v2/chat/completions
   deep-seek:
-    api-key: your-api-key
+    apiKey: your-deepseek-api-key
     endpoint: https://api.deepseek.com/v1/chat/completions
+  chat-gpt:
+    apiKey: your-chatgpt-api-key
+    endpoint: https://api.openai.com/v1/chat/completions
 ```
 
 ### 3. 使用示例
 
-#### 同步对话
+#### 通义千问 (QWen) 示例
 
 ```java
-
-public void chat() {
-    // 非必填参数 创建请求对象（使用链式调用）
+public void qwenChat() {
+    // 创建请求对象（使用链式调用）
     Map<String, Object> params = new HashMap<>();
     params.put("temperature", 0.7);
     params.put("top_p", 0.9);
     params.put("max_tokens", 2000);
     
     ModelRequestVO request = new ModelRequestVO()
-        .setModelName("qWen")  // 或 "spark", "deepSeek"
-        .setModel("qwen-turbo")  // 具体模型版本
+        .setModelName("qWen")
+        .setModel("qwen-turbo")
+        .setSystemPrompt("你是一个专业的AI助手")
         .setPrompt("你好，请介绍一下自己")
+        .setEnableThinking(true)  // 开启思考模式
         .setParams(params);
     
     // 获取服务实例并调用
     AiService aiService = FactoryModelService.create(request.getModelName());
+    
+    // 同步对话
     ModelResponseVO response = aiService.httpChat(request);
-    System.out.println(response.getResult());
+    System.out.println("回答: " + response.getResult());
+    
+    // 流式对话
+    Flux<ModelResponseVO> responseFlux = aiService.streamChat(request);
+    responseFlux.subscribe(response -> {
+        System.out.print(response.getResult());
+        if (response.getThinking() != null) {
+            System.out.println("\n思考过程：" + response.getThinking());
+        }
+    });
 }
 ```
 
-#### 流式对话
+#### 讯飞星火 (Spark) 示例
 
 ```java
-
-public void streamChat() {
-    // 使用链式调用创建请求对象
+public void sparkChat() {
     ModelRequestVO request = new ModelRequestVO()
         .setModelName("spark")
         .setModel("x1")
-        .setPrompt("写一首诗");
+        .setSystemPrompt("你是一个富有创造力的诗人")
+        .setPrompt("请写一首关于春天的诗");
     
     AiService aiService = FactoryModelService.create(request.getModelName());
     
-    // 方式1：获取ModelResponseVO流
+    // 同步对话
+    ModelResponseVO response = aiService.httpChat(request);
+    System.out.println("星火回答: " + response.getResult());
+    
+    // 流式对话 - 获取原始文本流
+    Flux<String> textFlux = aiService.streamChatStr(request);
+    textFlux.subscribe(text -> {
+        System.out.print(text);
+        // 可以实时显示生成的内容
+    });
+}
+```
+
+#### ChatGPT 示例
+
+```java
+public void chatGPTChat() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("temperature", 0.8);
+    params.put("max_tokens", 1500);
+    
+    ModelRequestVO request = new ModelRequestVO()
+        .setModelName("chatgpt")
+        .setModel("gpt-3.5-turbo")
+        .setSystemPrompt("你是一个技术专家，擅长解释复杂概念")
+        .setPrompt("请解释什么是微服务架构")
+        .setParams(params);
+    
+    AiService aiService = FactoryModelService.create(request.getModelName());
+    
+    // 同步对话
+    ModelResponseVO response = aiService.httpChat(request);
+    System.out.println("ChatGPT回答: " + response.getResult());
+    
+    // 流式对话
     Flux<ModelResponseVO> responseFlux = aiService.streamChat(request);
     responseFlux.subscribe(response -> {
-        System.out.println(response.getResult());
-        if (response.getThinking() != null) {
-            System.out.println("思考过程：" + response.getThinking());
-        }
+        System.out.print(response.getResult());
     });
+}
+```
+
+#### DeepSeek 示例
+
+```java
+public void deepSeekChat() {
+    ModelRequestVO request = new ModelRequestVO()
+        .setModelName("deepSeek")
+        .setModel("deepseek-chat")
+        .setSystemPrompt("你是一个数学老师，擅长解题")
+        .setPrompt("请帮我解这个方程：2x + 5 = 13");
     
-    // 方式2：获取原始文本流
-    Flux<String> textFlux = aiService.streamChatStr(request);
-    textFlux.subscribe(System.out::println);
+    AiService aiService = FactoryModelService.create(request.getModelName());
+    
+    // 同步对话
+    ModelResponseVO response = aiService.httpChat(request);
+    System.out.println("DeepSeek回答: " + response.getResult());
+    
+    // 流式对话
+    Flux<ModelResponseVO> responseFlux = aiService.streamChat(request);
+    responseFlux.subscribe(response -> {
+        System.out.print(response.getResult());
+    });
+}
+```
+
+#### 通用流式对话处理
+
+```java
+public void handleStreamChat(String modelName, String prompt) {
+    ModelRequestVO request = new ModelRequestVO()
+        .setModelName(modelName)
+        .setModel(getDefaultModel(modelName))
+        .setPrompt(prompt);
+    
+    AiService aiService = FactoryModelService.create(modelName);
+    
+    // 获取流式响应
+    Flux<ModelResponseVO> responseFlux = aiService.streamChat(request);
+    
+    // 处理流式响应
+    responseFlux.subscribe(
+        response -> {
+            // 处理每个响应片段
+            System.out.print(response.getResult());
+        },
+        error -> {
+            // 错误处理
+            System.err.println("对话出错: " + error.getMessage());
+        },
+        () -> {
+            // 完成处理
+            System.out.println("\n对话完成");
+        }
+    );
+}
+
+private String getDefaultModel(String modelName) {
+    switch (modelName.toLowerCase()) {
+        case "qwen": return "qwen-turbo";
+        case "spark": return "x1";
+        case "chatgpt": return "gpt-3.5-turbo";
+        case "deepseek": return "deepseek-chat";
+        default: return "qwen-turbo";
+    }
 }
 ```
 
 ## 支持的模型
 
-| 模型名称 | 枚举值 |
-|---------|--------|
-| 讯飞星火 | spark |
-| ChatGPT | chatgpt |
-| 通义千问 | qWen |
-| DeepSeek | deepSeek |
+| 模型名称 | 枚举值 | 默认模型 | 说明 |
+|---------|--------|----------|------|
+| 通义千问 | qWen | qwen-turbo | 阿里云大模型，支持思考模式 |
+| 讯飞星火 | spark | x1 | 科大讯飞大模型，支持流式对话 |
+| ChatGPT | chatgpt | gpt-3.5-turbo | OpenAI大模型，功能全面 |
+| DeepSeek | deepSeek | deepseek-chat | 深度求索大模型，擅长推理 |
 
 ## 参数说明
 
@@ -227,7 +334,7 @@ public void streamChat() {
 
 | 参数名 | 类型 | 是否必填 | 说明                                |
 |--------|------|----------|-----------------------------------|
-| modelName | String | 是 | 模型名称（qWen/chatgpt/spark/deepSeek） |
+| modelName | String | 是 | 模型名称（qWen/spark/chatgpt/deepSeek） |
 | model | String | 是 | 具体模型版本                            |
 | systemPrompt | String | 否 | 系统提示词                             |
 | prompt | String | 是 | 用户提示词                             |
@@ -242,12 +349,107 @@ public void streamChat() {
 | thinking | Boolean | 思考过程（如果启用） |
 | model | String | 模型名称 |
 
+### 常用参数
+
+| 参数名 | 类型 | 说明 | 推荐值 |
+|--------|------|------|--------|
+| temperature | Double | 控制随机性，值越高越随机 | 0.7 |
+| top_p | Double | 控制词汇选择的多样性 | 0.9 |
+| max_tokens | Integer | 最大生成token数 | 2000 |
+| presence_penalty | Double | 减少重复内容的惩罚 | 0.1 |
+| frequency_penalty | Double | 减少高频词汇的惩罚 | 0.1 |
+
+## 最佳实践
+
+### 1. 错误处理
+
+```java
+try {
+    ModelResponseVO response = aiService.httpChat(request);
+    // 处理成功响应
+} catch (AiException e) {
+    log.error("AI服务调用失败: {}", e.getMessage(), e);
+    // 根据错误类型进行相应处理
+    if (e.getMessage().contains("API密钥")) {
+        // 处理认证错误
+    } else if (e.getMessage().contains("配额")) {
+        // 处理配额限制
+    }
+}
+```
+
+### 2. 重试机制
+
+```java
+public ModelResponseVO chatWithRetry(ModelRequestVO request, int maxRetries) {
+    for (int i = 0; i < maxRetries; i++) {
+        try {
+            return aiService.httpChat(request);
+        } catch (AiException e) {
+            if (i == maxRetries - 1) {
+                throw e;
+            }
+            log.warn("第{}次调用失败，准备重试: {}", i + 1, e.getMessage());
+            try {
+                Thread.sleep(1000 * (i + 1)); // 指数退避
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new AiException("重试被中断", ie);
+            }
+        }
+    }
+    throw new AiException("重试次数已达上限");
+}
+```
+
+### 3. 流式对话优化
+
+```java
+public void optimizedStreamChat(ModelRequestVO request) {
+    AiService aiService = FactoryModelService.create(request.getModelName());
+    
+    // 使用背压控制，避免内存溢出
+    Flux<ModelResponseVO> responseFlux = aiService.streamChat(request)
+        .onBackpressureBuffer(1000) // 限制缓冲区大小
+        .doOnNext(response -> {
+            // 实时处理每个响应片段
+            processResponse(response);
+        })
+        .doOnError(error -> {
+            // 错误处理
+            log.error("流式对话出错: {}", error.getMessage());
+        })
+        .doOnComplete(() -> {
+            // 完成处理
+            log.info("流式对话完成");
+        });
+    
+    responseFlux.subscribe();
+}
+```
+
 ## 注意事项
 
-1. 使用前请确保已正确配置API密钥和端点地址
-2. 流式对话建议使用响应式编程方式处理
-3. 参数透传支持常见参数（temperature/top_p/max_tokens）和其他自定义参数
-4. 建议在生产环境中添加适当的错误处理和重试机制
+1. **配置参数名称**：确保使用 `apiKey` 而不是 `api-key`，这是Spring Boot的属性绑定规则
+2. **API密钥安全**：不要在代码中硬编码API密钥，使用环境变量或配置中心
+3. **流式对话处理**：建议使用响应式编程方式处理，避免阻塞主线程
+4. **错误处理**：在生产环境中添加适当的错误处理和重试机制
+5. **参数验证**：在调用前验证必要参数，避免运行时错误
+6. **资源管理**：及时释放流式连接，避免资源泄漏
+
+## 常见问题
+
+### Q: 配置不生效怎么办？
+A: 检查配置参数名称是否正确，确保使用 `apiKey` 而不是 `api-key`
+
+### Q: 流式对话没有响应？
+A: 检查是否正确订阅了Flux流，确保调用了 `subscribe()` 方法
+
+### Q: 如何切换不同的模型？
+A: 使用 `FactoryModelService.create(modelName)` 方法，传入对应的模型名称
+
+### Q: 支持哪些自定义参数？
+A: 支持各模型的标准参数，如temperature、top_p、max_tokens等
 
 ## 贡献指南
 

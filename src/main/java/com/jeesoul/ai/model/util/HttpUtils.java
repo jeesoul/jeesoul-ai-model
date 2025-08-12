@@ -176,7 +176,7 @@ public class HttpUtils {
         R result = JsonUtils.fromJson(responseBody, responseType);
         // 设置响应信息
         if (result != null) {
-            result.setStatus(response.getStatus());
+            result.setHttpStatus(response.getStatus());
         }
         return result;
     }

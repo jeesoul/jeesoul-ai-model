@@ -35,7 +35,7 @@ public class HttpBaseResponse {
     /**
      * 状态码
      */
-    private Integer status;
+    private Integer httpStatus;
 
     /**
      * 错误消息

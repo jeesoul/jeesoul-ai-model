@@ -18,6 +18,18 @@ import java.util.Map;
 @Data
 public class HttpSparkChatResponse extends HttpBaseChatResponse {
     /**
+     * 错误码：0表示成功，非0表示错误
+     */
+    private int code;
+    /**
+     * 本次请求的唯一id
+     */
+    private String sid;
+    /**
+     * ”complete“
+     */
+    private String status;
+    /**
      * Spark选项类
      * 继承自BaseChoice，增加特定参数
      */

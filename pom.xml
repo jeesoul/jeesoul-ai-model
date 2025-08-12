@@ -6,9 +6,9 @@
 
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 
-    <description>jeeSoul ai工具</description>
+    <description>jeesoul ai工具</description>
 
     <url>https://github.com/jeesoul/jeesoul-ai-model</url>
     <!-- 开发者信息 -->
@@ -78,7 +78,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.12.0</version>
+            <version>3.18.0</version>
         </dependency>
         <!--集成响应式编程-->
         <dependency>
