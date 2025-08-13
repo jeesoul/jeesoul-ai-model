@@ -38,6 +38,18 @@ public class ModelRequestVO {
      */
     private boolean enableThinking;
     /**
+     * 采样温度，影响生成内容的多样性，默认0.7
+     */
+    private Double temperature = 0.7;
+    /**
+     * top_p
+     */
+    private Double topP;
+    /**
+     * 最大token数
+     */
+    private Integer maxTokens;
+    /**
      * 其他参数
      */
     private Map<String, Object> params;

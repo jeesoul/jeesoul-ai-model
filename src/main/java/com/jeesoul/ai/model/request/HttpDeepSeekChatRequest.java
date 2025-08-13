@@ -1,5 +1,6 @@
 package com.jeesoul.ai.model.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -21,6 +22,20 @@ public class HttpDeepSeekChatRequest {
      * 消息列表
      */
     private List<Message> messages;
+    /**
+     * 温度
+     */
+    private Double temperature;
+    /**
+     * top_p
+     */
+    @JsonProperty("top_p")
+    private Double topP;
+    /**
+     * 最大token数
+     */
+    @JsonProperty("max_tokens")
+    private Integer maxTokens;
 
     /**
      * 是否使用流式响应

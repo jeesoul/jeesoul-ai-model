@@ -126,11 +126,11 @@ src/main/java/com/jeesoul/ai/model/
 </repositories>
 
 <dependencies>
-<!--已发布到 maven 中央仓库 目前最新版: 1.0.4-->
+<!--已发布到 maven 中央仓库 目前最新版: 1.0.5-->
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
 </dependency>
 
 <!--集成响应式编程-->
@@ -168,11 +168,7 @@ ai:
 ```java
 public void qwenChat() {
     // 创建请求对象（使用链式调用）
-    Map<String, Object> params = new HashMap<>();
-    params.put("temperature", 0.7);
-    params.put("top_p", 0.9);
-    params.put("max_tokens", 2000);
-    
+
     ModelRequestVO request = new ModelRequestVO()
         .setModelName("qWen")
         .setModel("qwen-turbo")
@@ -180,7 +176,9 @@ public void qwenChat() {
         .setPrompt("你好，请介绍一下自己")
         .setEnableThinking(true)  // 开启思考模式
         .setParams(params);
-    
+    request.setTemperature(0.7);
+    request.setTopP(0.8);
+    request.setMaxTokens(2000);
     // 获取服务实例并调用
     AiService aiService = FactoryModelService.create(request.getModelName());
     
@@ -228,17 +226,16 @@ public void sparkChat() {
 
 ```java
 public void chatGPTChat() {
-    Map<String, Object> params = new HashMap<>();
-    params.put("temperature", 0.8);
-    params.put("max_tokens", 1500);
-    
+
     ModelRequestVO request = new ModelRequestVO()
         .setModelName("chatgpt")
         .setModel("gpt-3.5-turbo")
         .setSystemPrompt("你是一个技术专家，擅长解释复杂概念")
         .setPrompt("请解释什么是微服务架构")
         .setParams(params);
-    
+    request.setTemperature(0.7);
+    request.setTopP(0.8);
+    request.setMaxTokens(2000);
     AiService aiService = FactoryModelService.create(request.getModelName());
     
     // 同步对话
@@ -348,16 +345,6 @@ private String getDefaultModel(String modelName) {
 | result | String | 返回结果 |
 | thinking | Boolean | 思考过程（如果启用） |
 | model | String | 模型名称 |
-
-### 常用参数
-
-| 参数名 | 类型 | 说明 | 推荐值 |
-|--------|------|------|--------|
-| temperature | Double | 控制随机性，值越高越随机 | 0.7 |
-| top_p | Double | 控制词汇选择的多样性 | 0.9 |
-| max_tokens | Integer | 最大生成token数 | 2000 |
-| presence_penalty | Double | 减少重复内容的惩罚 | 0.1 |
-| frequency_penalty | Double | 减少高频词汇的惩罚 | 0.1 |
 
 ## 最佳实践
 

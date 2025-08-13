@@ -25,8 +25,12 @@ public class HttpSparkChatRequest {
     /**
      * 采样温度，影响生成内容的多样性，默认0.7
      */
-    private double temperature = 0.7;
-
+    private Double temperature = 0.7;
+    /**
+     * top_p
+     */
+    @JsonProperty("top_p")
+    private Double topP;
     /**
      * 最大token数
      */

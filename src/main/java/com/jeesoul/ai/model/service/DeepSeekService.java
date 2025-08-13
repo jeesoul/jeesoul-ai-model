@@ -86,6 +86,9 @@ public class DeepSeekService implements AiService {
         chatRequest.setModel(request.getModel());
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);
+        chatRequest.setTemperature(request.getTemperature());
+        chatRequest.setTopP(request.getTopP());
+        chatRequest.setMaxTokens(request.getMaxTokens());
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
     }
@@ -188,9 +191,9 @@ public class DeepSeekService implements AiService {
             return;
         }
         // 处理通用参数
-        setCommonParam(chatRequest, params, "temperature", Double.class);
-        setCommonParam(chatRequest, params, "top_p", Double.class);
-        setCommonParam(chatRequest, params, "max_tokens", Integer.class);
+//        setCommonParam(chatRequest, params, "temperature", Double.class);
+//        setCommonParam(chatRequest, params, "top_p", Double.class);
+//        setCommonParam(chatRequest, params, "max_tokens", Integer.class);
         // 处理其他参数
         setOtherParams(chatRequest, params);
     }
