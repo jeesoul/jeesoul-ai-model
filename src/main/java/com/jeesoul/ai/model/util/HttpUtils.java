@@ -191,7 +191,7 @@ public class HttpUtils {
         /**
          * 请求超时时间（毫秒）
          */
-        private int timeout = 60000;
+        private int timeout = 600000;
 
         /**
          * 是否启用 SSL
