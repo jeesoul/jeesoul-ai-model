@@ -126,11 +126,11 @@ src/main/java/com/jeesoul/ai/model/
 </repositories>
 
 <dependencies>
-<!--已发布到 maven 中央仓库 目前最新版: 1.0.5-->
+<!--已发布到 maven 中央仓库 目前最新版: 1.0.6-->
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
 </dependency>
 
 <!--集成响应式编程-->
