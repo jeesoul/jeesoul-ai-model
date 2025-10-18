@@ -23,7 +23,11 @@ public enum AiModel {
     /**
      * DeepSeek
      */
-    DEEP_SEEK("deepSeek", "deepSeekService");
+    DEEP_SEEK("deepSeek", "deepSeekService"),
+    /**
+     * 通义千问视觉理解（多模态）
+     */
+    QWEN_VL("qwenVL", "qWenVLService");
 
     /**
      * 模型名称
@@ -76,6 +80,16 @@ public enum AiModel {
                 return aiModel;
             }
         }
-        throw new IllegalArgumentException("不支持的模型: " + model);
+        // 提供支持的模型列表
+        StringBuilder supportedModels = new StringBuilder();
+        for (AiModel aiModel : values()) {
+            if (supportedModels.length() > 0) {
+                supportedModels.append(", ");
+            }
+            supportedModels.append(aiModel.getModelName());
+        }
+        throw new IllegalArgumentException(
+                String.format("不支持的模型: %s。支持的模型有: %s", model, supportedModels.toString())
+        );
     }
 }

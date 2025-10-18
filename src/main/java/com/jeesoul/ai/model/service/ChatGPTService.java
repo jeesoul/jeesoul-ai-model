@@ -11,7 +11,6 @@ import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
@@ -20,7 +19,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -31,23 +29,34 @@ import java.util.UUID;
  * @date 2025-06-10
  */
 @Slf4j
-@RequiredArgsConstructor
-public class ChatGPTService implements AiService {
-    /**
-     * AI配置信息
-     */
-    private final AiProperties aiProperties;
-    /**
-     * HTTP工具类实例
-     */
-    private final HttpUtils aiHttpUtils;
-    /**
-     * 流式HTTP工具类实例
-     */
-    private final StreamHttpUtils streamHttpUtils;
+public class ChatGPTService extends AbstractAiService {
+
+    public ChatGPTService(AiProperties aiProperties, HttpUtils aiHttpUtils, StreamHttpUtils streamHttpUtils) {
+        super(aiProperties, aiHttpUtils, streamHttpUtils);
+    }
+
+    @Override
+    protected String getModelName() {
+        return AiModel.CHATGPT.getModelName();
+    }
+
+    @Override
+    protected boolean supportSystemPrompt() {
+        return true;
+    }
+
+    @Override
+    protected boolean supportThinking() {
+        return false;
+    }
 
     @Override
     public ModelResponseVO httpChat(ModelRequestVO request) throws AiException {
+        // 参数校验
+        validateRequest(request);
+        // 警告不支持的功能
+        warnUnsupportedFeatures(request);
+        
         try {
             HttpChatGPTChatRequest chatRequest = buildChatRequest(request, false);
             HttpChatGPTChatResponse response = sendHttpRequest(chatRequest);
@@ -89,6 +98,7 @@ public class ChatGPTService implements AiService {
         chatRequest.setTemperature(request.getTemperature());
         chatRequest.setTopP(request.getTopP());
         chatRequest.setMaxTokens(request.getMaxTokens());
+        // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
     }
@@ -166,9 +176,10 @@ public class ChatGPTService implements AiService {
     private HttpUtils.HttpConfig createHttpConfig() {
         return HttpUtils.HttpConfig.builder()
                 .apiKey(aiProperties.getChatGpt().getApiKey())
-                .requestInterceptor(r -> log.info("[ChatGPT] 请求URL: {}", r.getUrl()))
+                .requestInterceptor(r -> log.debug("[ChatGPT] 请求URL: {}", r.getUrl()))
                 .responseInterceptor(response ->
-                        log.info("[ChatGPT] 响应状态: {}, 响应内容: {}", response.getStatus(), response.body()))
+                        log.debug("[ChatGPT] 响应状态: {}, 响应内容: {}", 
+                                 response.getStatus(), truncateForLog(response.body(), 200)))
                 .build();
     }
 
@@ -185,65 +196,4 @@ public class ChatGPTService implements AiService {
                 .build();
     }
 
-    /**
-     * 将params参数合并到请求体
-     *
-     * @param chatRequest 请求体
-     * @param params      扩展字段
-     */
-    private void mergeParamsToRequest(HttpChatGPTChatRequest chatRequest, Map<String, Object> params) {
-        if (params == null || params.isEmpty()) {
-            return;
-        }
-        // 处理通用参数
-//        setCommonParam(chatRequest, params, "temperature", Double.class);
-//        setCommonParam(chatRequest, params, "top_p", Double.class);
-//        setCommonParam(chatRequest, params, "max_tokens", Integer.class);
-        // 处理其他参数
-        setOtherParams(chatRequest, params);
-    }
-
-    /**
-     * 设置通用参数
-     *
-     * @param chatRequest 请求体
-     * @param params      参数映射
-     * @param paramName   参数名
-     * @param paramType   参数类型
-     */
-    private void setCommonParam(HttpChatGPTChatRequest chatRequest, Map<String, Object> params,
-                                String paramName, Class<?> paramType) {
-        if (!params.containsKey(paramName)) {
-            return;
-        }
-        try {
-            String setterName = "set" + Character.toUpperCase(paramName.charAt(0)) + paramName.substring(1);
-            chatRequest.getClass().getMethod(setterName, paramType)
-                    .invoke(chatRequest, ((Number) params.get(paramName)).doubleValue());
-        } catch (Exception e) {
-            log.debug("[ChatGPT] 参数透传失败 - {}: {}", paramName, e.getMessage());
-        }
-    }
-
-    /**
-     * 设置其他参数
-     *
-     * @param chatRequest 请求体
-     * @param params      参数映射
-     */
-    private void setOtherParams(HttpChatGPTChatRequest chatRequest, Map<String, Object> params) {
-        params.forEach((k, v) -> {
-            String setter = "set" + Character.toUpperCase(k.charAt(0)) + k.substring(1);
-            try {
-                for (java.lang.reflect.Method m : chatRequest.getClass().getMethods()) {
-                    if (m.getName().equals(setter) && m.getParameterCount() == 1) {
-                        m.invoke(chatRequest, v);
-                        break;
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("[ChatGPT] 参数透传失败 - {}: {}", k, e.getMessage());
-            }
-        });
-    }
 }

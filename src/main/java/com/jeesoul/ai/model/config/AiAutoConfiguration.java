@@ -11,7 +11,8 @@ import org.springframework.context.annotation.Import;
 @Configuration
 @EnableConfigurationProperties(AiProperties.class)
 @Import({QWenAutoConfiguration.class, ChatGPTAutoConfiguration.class,
-        SparkAutoConfiguration.class, DeepSeekAutoConfiguration.class})
+        SparkAutoConfiguration.class, DeepSeekAutoConfiguration.class,
+        QWenVLAutoConfiguration.class})
 public class AiAutoConfiguration {
 }
 

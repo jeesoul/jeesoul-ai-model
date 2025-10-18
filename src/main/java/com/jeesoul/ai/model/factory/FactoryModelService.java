@@ -29,7 +29,6 @@ public class FactoryModelService {
      * @return aiService
      */
     public static AiService create(AiModel aiModel) {
-        AiModel.fromString(aiModel.getModelName());
         return AiStrategyContext.getService(aiModel.getModelName());
     }
 }

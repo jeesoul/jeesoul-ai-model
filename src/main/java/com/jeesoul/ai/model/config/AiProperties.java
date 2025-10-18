@@ -28,6 +28,10 @@ public class AiProperties {
      * ChatGPT服务配置
      */
     private ChatGPTProperties chatGpt = new ChatGPTProperties();
+    /**
+     * 通义千问视觉理解服务配置
+     */
+    private QWenVLProperties qwenVL = new QWenVLProperties();
 
     /**
      * 讯飞星火服务配置属性
@@ -91,5 +95,21 @@ public class AiProperties {
          * 服务端点
          */
         private String endpoint = "https://api.openai.com/v1/chat/completions";
+    }
+
+    /**
+     * 通义千问视觉理解服务配置属性
+     */
+    @Data
+    public static class QWenVLProperties {
+        /**
+         * API 密钥
+         */
+        private String apiKey;
+
+        /**
+         * 服务端点
+         */
+        private String endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
     }
 }

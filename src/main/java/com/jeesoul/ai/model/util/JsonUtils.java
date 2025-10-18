@@ -104,6 +104,11 @@ public class JsonUtils {
 
     /**
      * JSON字符串转对象（支持泛型）
+     *
+     * @param <T> 目标类型
+     * @param json JSON字符串
+     * @param typeReference 类型引用
+     * @return 转换后的对象
      */
     public static <T> T fromJson(String json, TypeReference<T> typeReference) {
         try {
