@@ -1,0 +1,22 @@
+# 多模态视觉示例配置
+
+server:
+  port: 8080
+
+# QWen-VL 配置
+ai:
+  qwen-vl:
+    api-key: ${QWEN_API_KEY}  # 使用环境变量
+    endpoint: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.example.ai: DEBUG
+    com.jeesoul.ai.model: DEBUG
+
+# Spring 配置
+spring:
+  application:
+    name: multimodal-vision-example
