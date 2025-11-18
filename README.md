@@ -25,7 +25,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
 </dependency>
 
 <!-- 流式对话支持 -->
