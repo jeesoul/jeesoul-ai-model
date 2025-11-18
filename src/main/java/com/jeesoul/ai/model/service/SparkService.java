@@ -86,6 +86,45 @@ public class SparkService extends AbstractAiService {
         return sendStreamRequest(request).map(ResultContent::getContent);
     }
 
+    @Override
+    public String httpChatRaw(ModelRequestVO request) throws AiException {
+        // 参数校验
+        validateRequest(request);
+        // 警告不支持的功能
+        warnUnsupportedFeatures(request);
+
+        try {
+            HttpSparkChatRequest chatRequest = buildChatRequest(request, false);
+            logRequestParams(chatRequest);
+            HttpUtils.HttpConfig config = createHttpConfig();
+            return aiHttpUtils.postRaw(
+                    aiProperties.getSpark().getEndpoint(),
+                    new HashMap<>(),
+                    chatRequest,
+                    config
+            );
+        } catch (Exception e) {
+            log.error("[Spark] 调用失败: {}", e.getMessage(), e);
+            throw new AiException("Spark调用失败", e);
+        }
+    }
+
+    @Override
+    public Flux<String> streamChatRaw(ModelRequestVO request) throws AiException {
+        HttpSparkChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
+        StreamHttpUtils.StreamHttpConfig<HttpSparkChatRequest, String> config = StreamHttpUtils.StreamHttpConfig
+                .<HttpSparkChatRequest, String>builder()
+                .apiKey(aiProperties.getSpark().getApiKey())
+                .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
+                .build();
+        return streamHttpUtils.postStreamRaw(
+                aiProperties.getSpark().getEndpoint(),
+                chatRequest,
+                config
+        );
+    }
+
     /**
      * 构建聊天请求对象
      *
@@ -95,12 +134,12 @@ public class SparkService extends AbstractAiService {
      */
     private HttpSparkChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpSparkChatRequest chatRequest = new HttpSparkChatRequest();
-        chatRequest.setModel(request.getModel());
+        chatRequest.setModel(getModel(request, aiProperties.getSpark().getModel()));
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);
-        chatRequest.setTemperature(request.getTemperature());
-        chatRequest.setTopP(request.getTopP());
-        chatRequest.setMaxTokens(request.getMaxTokens());
+        chatRequest.setTemperature(getTemperature(request, aiProperties.getSpark().getTemperature()));
+        chatRequest.setTopP(getTopP(request, aiProperties.getSpark().getTopP()));
+        chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getSpark().getMaxTokens()));
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -114,11 +153,24 @@ public class SparkService extends AbstractAiService {
      */
     private List<HttpSparkChatRequest.Message> buildMessages(ModelRequestVO request) {
         List<HttpSparkChatRequest.Message> messages = new ArrayList<>();
-        // 添加系统消息
+        
+        // 如果设置了 systemPrompt，系统消息放在最前面
         if (request.getSystemPrompt() != null && !request.getSystemPrompt().isEmpty()) {
             messages.add(createMessage(AiRole.SYSTEM, request.getSystemPrompt()));
         }
-        // 添加用户消息
+        
+        // 如果请求中提供了消息列表，添加消息列表（跳过其中的 system 消息，因为已经在最前面添加了）
+        if (!CollectionUtils.isEmpty(request.getMessages())) {
+            for (ModelRequestVO.Message voMessage : request.getMessages()) {
+                HttpSparkChatRequest.Message message = new HttpSparkChatRequest.Message();
+                message.setRole(voMessage.getRole());
+                message.setContent(voMessage.getContent());
+                messages.add(message);
+            }
+            return messages;
+        }
+        
+        // 否则使用原来的逻辑：添加用户消息
         messages.add(createMessage(AiRole.USER, request.getPrompt()));
         return messages;
     }
@@ -145,6 +197,7 @@ public class SparkService extends AbstractAiService {
      * @throws IOException 请求异常
      */
     private HttpSparkChatResponse sendHttpRequest(HttpSparkChatRequest chatRequest) throws IOException {
+        logRequestParams(chatRequest);
         HttpUtils.HttpConfig config = createHttpConfig();
         return aiHttpUtils.post(
                 aiProperties.getSpark().getEndpoint(),
@@ -163,6 +216,7 @@ public class SparkService extends AbstractAiService {
      */
     private Flux<ResultContent> sendStreamRequest(ModelRequestVO request) {
         HttpSparkChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
         StreamHttpUtils.StreamHttpConfig<HttpSparkChatRequest, ResultContent> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getSpark().getEndpoint(),

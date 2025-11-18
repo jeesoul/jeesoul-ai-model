@@ -15,6 +15,7 @@ import reactor.netty.http.client.HttpClient;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -89,7 +90,7 @@ public class StreamHttpUtils {
             }
 
             // 发送请求并处理响应
-            return requestSpec.body(BodyInserters.fromValue(JsonUtils.toJson(body)))
+            return requestSpec.body(BodyInserters.fromValue(Objects.requireNonNull(JsonUtils.toJson(body))))
                     .retrieve()
                     .bodyToFlux(String.class)
                     .filter(data -> !data.trim().isEmpty())
@@ -123,36 +124,82 @@ public class StreamHttpUtils {
     }
 
     /**
-     * 发送流式POST请求（文本响应版本）
-     * 用于处理纯文本格式的流式响应，如日志流、简单文本流等
+     * 发送流式POST请求（原始响应版本）
+     * 用于返回原始模型的响应数据（JSON字符串）
      *
      * @param <T>    请求体类型，用于指定请求数据的类型
      * @param url    完整的请求URL
      * @param body   请求体
      * @param config 流式HTTP配置
-     * @return 文本响应数据流
+     * @return 原始响应数据流（JSON字符串）
      */
-    public <T> Flux<String> postStreamText(String url, T body, StreamHttpConfig<T, String> config) {
-        // 创建文本响应处理器
-        StreamBaseResponse<String> textProcessor = new StreamBaseResponse<String>() {
-            @Override
-            protected boolean isResponseValid(Map<String, Object> responseMap) {
-                // 文本响应不需要验证
-                return true;
-            }
+    public <T> Flux<String> postStreamRaw(String url, T body, StreamHttpConfig<T, String> config) {
+        // 创建WebClient
+        WebClient webClient = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
+                        .responseTimeout(Duration.ofMillis(config.getReadTimeout()))
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, config.getConnectTimeout())))
+                .build();
 
-            @Override
-            protected Flux<String> extractContent(Map<String, Object> responseMap) {
-                // 直接返回原始文本
-                return Flux.just(responseMap.toString());
-            }
-        };
+        // 构建请求URL（包含查询参数）
+        String finalUrl = url;
+        if (config.getQueryParams() != null && !config.getQueryParams().isEmpty()) {
+            StringBuilder urlBuilder = new StringBuilder(url);
+            urlBuilder.append("?");
+            config.getQueryParams().forEach((key, value) ->
+                    urlBuilder.append(key).append("=").append(value).append("&"));
+            finalUrl = urlBuilder.substring(0, urlBuilder.length() - 1);
+        }
 
-        // 设置文本响应处理器
-        config.setResponseProcessor(textProcessor);
+        // 构建请求
+        WebClient.RequestBodySpec requestSpec = webClient.post()
+                .uri(finalUrl)
+                .headers(headers -> {
+                    // 添加默认请求头
+                    DEFAULT_HEADERS.forEach(headers::add);
+                    // 添加自定义请求头
+                    if (config.getHeaders() != null) {
+                        config.getHeaders().forEach(headers::add);
+                    }
+                    // 添加API密钥
+                    if (config.getApiKey() != null) {
+                        headers.add("Authorization", "Bearer " + config.getApiKey());
+                    }
+                });
 
-        // 调用通用流式请求方法
-        return postStream(url, body, config);
+        // 应用请求拦截器
+        if (config.getRequestInterceptor() != null) {
+            config.getRequestInterceptor().accept(requestSpec);
+        }
+
+        // 发送请求并返回原始响应流（JSON字符串）
+        return requestSpec.body(BodyInserters.fromValue(Objects.requireNonNull(JsonUtils.toJson(body))))
+                .retrieve()
+                .bodyToFlux(String.class)
+                .filter(data -> !data.trim().isEmpty())
+                .mapNotNull(data -> {
+                    // 处理SSE格式：去掉 "data:" 前缀
+                    if (data.startsWith("data:")) {
+                        String jsonData = data.substring(5).trim();
+                        // 检查是否是结束标记
+                        if ("[DONE]".equals(jsonData)) {
+                            return null;
+                        }
+                        return jsonData;
+                    }
+                    return data;
+                })
+                .filter(Objects::nonNull)
+                .doOnError(e -> {
+                    log.error("流式请求处理失败: {}", e.getMessage());
+                    if (e instanceof org.springframework.web.reactive.function.client.WebClientResponseException) {
+                        org.springframework.web.reactive.function.client.WebClientResponseException ex =
+                                (org.springframework.web.reactive.function.client.WebClientResponseException) e;
+                        log.error("错误响应状态码: {}, 错误响应体: {}",
+                                ex.getStatusCode(),
+                                ex.getResponseBodyAsString());
+                    }
+                });
     }
 
     /**

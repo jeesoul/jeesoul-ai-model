@@ -76,11 +76,11 @@ stream.subscribe(System.out::print);
 
 | 模型名称 | 模型标识 | 特性 | 支持功能 |
 |---------|---------|------|---------|
-| 通义千问 | `qWen` | 阿里云大模型 | 思考模式 |
-| ChatGPT | `chatgpt` | OpenAI 大模型 | System Prompt |
-| 讯飞星火 | `spark` | 科大讯飞大模型 | System Prompt |
-| DeepSeek | `deepSeek` | 深度求索大模型 | 推理能力强 |
-| 千问视觉 | `qwenVL` | 多模态模型 | 图片、视频分析 |
+| 通义千问 | `qWen` | 阿里云大模型 | 思考模式、System Prompt、多轮对话 |
+| ChatGPT | `chatgpt` | OpenAI 大模型 | System Prompt、多轮对话 |
+| 讯飞星火 | `spark` | 科大讯飞大模型 | System Prompt、多轮对话 |
+| DeepSeek | `deepSeek` | 深度求索大模型 | System Prompt、多轮对话 |
+| 千问视觉 | `qwenVL` | 多模态模型 | 图片、视频分析、System Prompt、多轮对话 |
 
 ## 📚 使用指南
 
@@ -101,10 +101,10 @@ ModelResponseVO response = aiService.httpChat(request);
 ### 系统提示词
 
 ```java
-// ChatGPT 和 Spark 支持 systemPrompt
+// 所有模型都支持 systemPrompt
 ModelRequestVO request = new ModelRequestVO()
-    .setModelName("chatgpt")
-    .setModel("gpt-3.5-turbo")
+    .setModelName("qWen")
+    .setModel("qwen-turbo")
     .setSystemPrompt("你是一个专业的Java工程师")
     .setPrompt("如何优化Spring Boot性能？");
 ```
@@ -139,6 +139,38 @@ responseFlux.subscribe(response -> {
 // 方式2: 只获取文本内容（推荐）
 Flux<String> textFlux = aiService.streamChatStr(request);
 textFlux.subscribe(System.out::print);
+
+// 方式3: 获取原始响应数据（JSON字符串，用于调试或自定义处理）
+Flux<String> rawFlux = aiService.streamChatRaw(request);
+rawFlux.subscribe(json -> {
+    System.out.println("原始响应: " + json);
+    // 可以自定义解析和处理
+});
+```
+
+### 聊天上下文（多轮对话）
+
+```java
+// 使用 messages 列表支持多轮对话
+List<ModelRequestVO.Message> messages = Arrays.asList(
+    new ModelRequestVO.Message()
+        .setRole("user")
+        .setContent("你好"),
+    new ModelRequestVO.Message()
+        .setRole("assistant")
+        .setContent("你好！有什么可以帮助你的吗？"),
+    new ModelRequestVO.Message()
+        .setRole("user")
+        .setContent("请介绍一下Java")
+);
+
+ModelRequestVO request = new ModelRequestVO()
+    .setModelName("qWen")
+    .setModel("qwen-turbo")
+    .setMessages(messages);
+
+// 注意：如果设置了 messages，prompt 字段会被忽略
+// systemPrompt 会自动添加到消息列表的最前面
 ```
 
 ### 参数透传
@@ -154,6 +186,22 @@ ModelRequestVO request = new ModelRequestVO()
     .setModel("gpt-3.5-turbo")
     .setPrompt("写一首诗")
     .setParams(params);
+```
+
+### 获取原始响应数据
+
+```java
+// 同步获取原始响应（JSON字符串）
+String rawResponse = aiService.httpChatRaw(request);
+System.out.println("原始响应: " + rawResponse);
+// 可以自定义解析和处理，获取完整的响应信息
+
+// 流式获取原始响应（JSON字符串流）
+Flux<String> rawStream = aiService.streamChatRaw(request);
+rawStream.subscribe(json -> {
+    System.out.println("原始响应片段: " + json);
+    // 每个片段都是完整的JSON对象
+});
 ```
 
 ## 🎨 多模态使用
@@ -335,14 +383,21 @@ ModelResponseVO response = claudeService.httpChat(request);
 |------|------|------|------|
 | `modelName` | String | 是 | 模型名称(qWen/chatgpt/spark/deepSeek/qwenVL) |
 | `model` | String | 是 | 具体模型版本(如 qwen-turbo, gpt-3.5-turbo) |
-| `prompt` | String | 是* | 用户提示词(*多模态时可选) |
+| `prompt` | String | 是* | 用户提示词(*多模态时可选，如果设置了messages则会被忽略) |
 | `contents` | List<MessageContent> | 否 | 多模态内容列表(优先级高于prompt) |
-| `systemPrompt` | String | 否 | 系统提示词(仅ChatGPT/Spark支持) |
+| `messages` | List<Message> | 否 | 消息列表(用于多轮对话，优先级高于prompt) |
+| `systemPrompt` | String | 否 | 系统提示词(所有模型都支持，会自动添加到消息列表最前面) |
 | `enableThinking` | Boolean | 否 | 是否开启思考模式(仅QWen支持) |
-| `temperature` | Double | 否 | 采样温度(0-2，默认0.7) |
-| `topP` | Double | 否 | 核采样参数(0-1) |
-| `maxTokens` | Integer | 否 | 最大生成Token数 |
+| `temperature` | Double | 否 | 采样温度(0-2，默认0.7，可在yml中配置) |
+| `topP` | Double | 否 | 核采样参数(0-1，默认0.9，可在yml中配置) |
+| `maxTokens` | Integer | 否 | 最大生成Token数(默认2000，可在yml中配置) |
 | `params` | Map | 否 | 自定义参数(模型特定参数) |
+
+**Message 对象结构：**
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `role` | String | 角色(user/assistant/system) |
+| `content` | String | 消息内容 |
 
 ### ModelResponseVO
 
@@ -351,6 +406,16 @@ ModelResponseVO response = claudeService.httpChat(request);
 | `result` | String | 模型返回的文本内容 |
 | `thinking` | String | 思考过程(如果启用) |
 | `model` | String | 使用的模型名称 |
+
+### AiService 接口方法
+
+| 方法 | 返回类型 | 说明 |
+|------|---------|------|
+| `httpChat(ModelRequestVO)` | `ModelResponseVO` | 同步对话，返回解析后的响应对象 |
+| `httpChatRaw(ModelRequestVO)` | `String` | 同步对话，返回原始JSON响应字符串 |
+| `streamChat(ModelRequestVO)` | `Flux<ModelResponseVO>` | 流式对话，返回响应对象流 |
+| `streamChatStr(ModelRequestVO)` | `Flux<String>` | 流式对话，返回文本内容流 |
+| `streamChatRaw(ModelRequestVO)` | `Flux<String>` | 流式对话，返回原始JSON响应字符串流 |
 
 ## 💡 最佳实践
 
@@ -417,29 +482,56 @@ ai:
   qwen:
     api-key: sk-xxx
     endpoint: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
+    temperature: 0.7      # 采样温度，默认0.7
+    top-p: 0.9           # 核采样参数，默认0.9
+    max-tokens: 2000     # 最大token数，默认2000
+    model: qwen-turbo    # 默认模型名称
   
   chat-gpt:
     api-key: sk-xxx
     endpoint: https://api.openai.com/v1/chat/completions
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: gpt-3.5-turbo
   
   spark:
     api-key: xxx
     endpoint: https://spark-api-open.xf-yun.com/v2/chat/completions
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: spark-v3.5
   
   deep-seek:
     api-key: sk-xxx
     endpoint: https://api.deepseek.com/v1/chat/completions
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: deepseek-chat
   
   qwen-vl:
     api-key: sk-xxx
     endpoint: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: qwen-vl-plus
 
 # 日志配置
 logging:
   level:
-    com.jeesoul.ai.model: DEBUG  # 开发环境
+    com.jeesoul.ai.model: DEBUG  # 开发环境，会打印请求参数
     # com.jeesoul.ai.model: INFO  # 生产环境
 ```
+
+### 配置说明
+
+- **参数优先级**：请求参数 > YML配置 > 代码默认值
+- **temperature/topP/maxTokens**：可以在YML中配置默认值，也可以在请求中覆盖
+- **model**：可以在YML中配置默认模型，也可以在请求中指定其他模型
+- **调试模式**：设置日志级别为DEBUG时，会自动打印发送给模型的原始请求参数
 
 ## 🔍 检查模型状态
 
@@ -542,7 +634,26 @@ WARN: [QWen] 当前模型不支持 systemPrompt，该参数将被忽略
 
 ## 📝 更新日志
 
-### v1.0.7 (即将发布)
+### v1.0.8 (最新版本)
+
+**✨ 新增功能**
+- 新增 `httpChatRaw()` 方法，支持获取原始HTTP响应数据（JSON字符串）
+- 新增 `streamChatRaw()` 方法，支持获取原始流式响应数据（JSON字符串流）
+- 新增 `messages` 字段支持，实现多轮对话上下文
+- 新增配置参数支持：`temperature`、`topP`、`maxTokens`、`model` 可在YML中配置默认值
+- 新增调试日志功能，DEBUG模式下自动打印请求参数
+
+**🎉 重大改进**
+- 所有模型统一支持 `systemPrompt` 参数（之前仅ChatGPT和Spark支持）
+- `systemPrompt` 自动添加到消息列表最前面，确保优先级
+- 参数优先级优化：请求参数 > YML配置 > 代码默认值
+- 简化参数获取逻辑，提升代码可读性和性能
+
+**🐛 缺陷修复**
+- 修复流式原始响应返回格式问题（之前返回Map.toString()，现在返回JSON字符串）
+- 修复 `postStreamText` 方法的响应格式问题
+
+### v1.0.7
 
 **✨ 新增功能**
 - 新增多模态支持（图片、视频分析）
@@ -558,7 +669,7 @@ WARN: [QWen] 当前模型不支持 systemPrompt，该参数将被忽略
 - 修复流式响应格式不一致问题
 - 修复参数透传Bug
 
-### v1.0.6 (当前版本)
+### v1.0.6
 
 - 支持通义千问、ChatGPT、讯飞星火、DeepSeek
 - 支持同步和流式对话

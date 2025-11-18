@@ -40,7 +40,7 @@ public class QWenService extends AbstractAiService {
 
     @Override
     protected boolean supportSystemPrompt() {
-        return false;
+        return true;
     }
 
     @Override
@@ -83,6 +83,45 @@ public class QWenService extends AbstractAiService {
         return sendStreamRequest(request).map(ResultContent::getContent);
     }
 
+    @Override
+    public String httpChatRaw(ModelRequestVO request) throws AiException {
+        // 参数校验
+        validateRequest(request);
+        // 警告不支持的功能
+        warnUnsupportedFeatures(request);
+
+        try {
+            HttpQWenChatRequest chatRequest = buildChatRequest(request, false);
+            logRequestParams(chatRequest);
+            HttpUtils.HttpConfig config = createHttpConfig();
+            return aiHttpUtils.postRaw(
+                    aiProperties.getQwen().getEndpoint(),
+                    new HashMap<>(),
+                    chatRequest,
+                    config
+            );
+        } catch (Exception e) {
+            log.error("[QWen] 调用失败: {}", e.getMessage(), e);
+            throw new AiException("QWen调用失败", e);
+        }
+    }
+
+    @Override
+    public Flux<String> streamChatRaw(ModelRequestVO request) throws AiException {
+        HttpQWenChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
+        StreamHttpUtils.StreamHttpConfig<HttpQWenChatRequest, String> config = StreamHttpUtils.StreamHttpConfig
+                .<HttpQWenChatRequest, String>builder()
+                .apiKey(aiProperties.getQwen().getApiKey())
+                .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
+                .build();
+        return streamHttpUtils.postStreamRaw(
+                aiProperties.getQwen().getEndpoint(),
+                chatRequest,
+                config
+        );
+    }
+
     /**
      * 构建聊天请求对象
      *
@@ -99,12 +138,12 @@ public class QWenService extends AbstractAiService {
             chatThink.setEnableThinking(Boolean.TRUE);
             chatRequest.setChatTemplateKwargs(chatThink);
         }
-        chatRequest.setModel(request.getModel());
+        chatRequest.setModel(getModel(request, aiProperties.getQwen().getModel()));
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);
-        chatRequest.setTemperature(request.getTemperature());
-        chatRequest.setTopP(request.getTopP());
-        chatRequest.setMaxTokens(request.getMaxTokens());
+        chatRequest.setTemperature(getTemperature(request, aiProperties.getQwen().getTemperature()));
+        chatRequest.setTopP(getTopP(request, aiProperties.getQwen().getTopP()));
+        chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getQwen().getMaxTokens()));
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -118,6 +157,23 @@ public class QWenService extends AbstractAiService {
      */
     private List<HttpQWenChatRequest.Message> buildMessages(ModelRequestVO request) {
         List<HttpQWenChatRequest.Message> messages = new ArrayList<>();
+        
+        // 如果设置了 systemPrompt，系统消息放在最前面
+        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isEmpty()) {
+            messages.add(createMessage(AiRole.SYSTEM, request.getSystemPrompt()));
+        }
+        
+        // 如果请求中提供了消息列表，添加消息列表（跳过其中的 system 消息，因为已经在最前面添加了）
+        if (!CollectionUtils.isEmpty(request.getMessages())) {
+            for (ModelRequestVO.Message voMessage : request.getMessages()) {
+                HttpQWenChatRequest.Message message = new HttpQWenChatRequest.Message();
+                message.setRole(voMessage.getRole());
+                message.setContent(voMessage.getContent());
+                messages.add(message);
+            }
+        }
+        
+        // 否则使用原来的逻辑：添加用户消息
         messages.add(createMessage(AiRole.USER, request.getPrompt()));
         return messages;
     }
@@ -144,6 +200,7 @@ public class QWenService extends AbstractAiService {
      * @throws IOException 请求异常
      */
     private HttpQWenChatResponse sendHttpRequest(HttpQWenChatRequest chatRequest) throws IOException {
+        logRequestParams(chatRequest);
         HttpUtils.HttpConfig config = createHttpConfig();
         return aiHttpUtils.post(
                 aiProperties.getQwen().getEndpoint(),
@@ -162,6 +219,7 @@ public class QWenService extends AbstractAiService {
      */
     private Flux<ResultContent> sendStreamRequest(ModelRequestVO request) {
         HttpQWenChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
         StreamHttpUtils.StreamHttpConfig<HttpQWenChatRequest, ResultContent> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getQwen().getEndpoint(),

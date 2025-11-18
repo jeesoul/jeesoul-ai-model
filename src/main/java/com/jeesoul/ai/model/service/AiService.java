@@ -44,5 +44,27 @@ public interface AiService {
      * @throws AiException 当与大模型交互过程中发生错误时抛出
      */
     Flux<String> streamChatStr(ModelRequestVO request) throws AiException;
+
+    /**
+     * 通过 HTTP 与大模型进行同步对话，返回原始响应数据
+     * 该方法返回模型响应的原始 JSON 字符串，不进行任何解析和封装
+     * 适用于需要获取完整响应数据的场景，如调试、日志记录等
+     *
+     * @param request 包含对话内容、参数等信息的请求对象
+     * @return 大模型的原始响应数据（JSON字符串）
+     * @throws AiException 当与大模型交互过程中发生错误时抛出
+     */
+    String httpChatRaw(ModelRequestVO request) throws AiException;
+
+    /**
+     * 通过流式方式与大模型进行对话，返回原始响应数据流
+     * 该方法返回模型响应的原始 JSON 字符串流，不进行任何解析和封装
+     * 适用于需要获取完整流式响应数据的场景，如调试、日志记录等
+     *
+     * @param request 包含对话内容、参数等信息的请求对象
+     * @return 大模型的原始响应数据流（JSON字符串流）
+     * @throws AiException 当与大模型交互过程中发生错误时抛出
+     */
+    Flux<String> streamChatRaw(ModelRequestVO request) throws AiException;
 }
 

@@ -29,7 +29,7 @@ public class ModelRequestVO {
      * 示例:
      * - qWen: "qwen-turbo", "qwen-plus", "qwen-max"
      * - chatgpt: "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"
-     * - spark: "x1", "x2", "x3"
+     * - spark: "x1"
      * - deepSeek: "deepseek-chat", "deepseek-coder"
      */
     private String model;
@@ -37,7 +37,7 @@ public class ModelRequestVO {
     /**
      * 系统提示词（可选）
      * 用于设定AI的角色和行为规范
-     * 注意: 仅 ChatGPT 和 Spark 支持此参数，QWen 和 DeepSeek 会忽略
+     * 所有模型都支持此参数，会将其转换为消息列表中的 system 角色消息
      * 示例: "你是一个专业的Java工程师"
      */
     private String systemPrompt;
@@ -123,4 +123,43 @@ public class ModelRequestVO {
      * 默认: null
      */
     private Map<String, Object> params;
+
+    /**
+     * 消息列表（可选，用于支持聊天上下文）
+     * 用于构建多轮对话的上下文消息
+     * 如果设置了此字段，将优先使用此字段构建消息列表
+     * 
+     * 使用示例：
+     * <pre>
+     * List&lt;Message&gt; messages = Arrays.asList(
+     *     new Message().setRole("user").setContent("你好"),
+     *     new Message().setRole("assistant").setContent("你好！有什么可以帮助你的吗？"),
+     *     new Message().setRole("user").setContent("请介绍一下Java")
+     * );
+     * request.setMessages(messages);
+     * </pre>
+     * 
+     * 注意：
+     * - 如果设置了此字段，prompt 和 contents 字段可能会被忽略
+     * - 消息列表中的角色通常为: "user"（用户）、"assistant"（助手）、"system"（系统）
+     * - 不同模型对消息格式的要求可能不同
+     */
+    private List<Message> messages;
+
+    /**
+     * 消息实体类
+     */
+    @Data
+    @Accessors(chain = true)
+    public static class Message {
+        /**
+         * 角色
+         */
+        private String role;
+
+        /**
+         * 内容
+         */
+        private String content;
+    }
 }

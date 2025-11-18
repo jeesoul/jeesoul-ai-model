@@ -6,7 +6,7 @@
 
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
 
     <description>jeesoul ai工具</description>
 
@@ -66,7 +66,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.25</version>
+            <version>5.8.40</version>
         </dependency>
         <!-- 日志支持 -->
         <dependency>

@@ -42,7 +42,7 @@ public class DeepSeekService extends AbstractAiService {
 
     @Override
     protected boolean supportSystemPrompt() {
-        return false;
+        return true;
     }
 
     @Override
@@ -56,7 +56,7 @@ public class DeepSeekService extends AbstractAiService {
         validateRequest(request);
         // 警告不支持的功能
         warnUnsupportedFeatures(request);
-        
+
         try {
             HttpDeepSeekChatRequest chatRequest = buildChatRequest(request, false);
             HttpDeepSeekChatResponse response = sendHttpRequest(chatRequest);
@@ -83,6 +83,45 @@ public class DeepSeekService extends AbstractAiService {
         return sendStreamRequest(request);
     }
 
+    @Override
+    public String httpChatRaw(ModelRequestVO request) throws AiException {
+        // 参数校验
+        validateRequest(request);
+        // 警告不支持的功能
+        warnUnsupportedFeatures(request);
+
+        try {
+            HttpDeepSeekChatRequest chatRequest = buildChatRequest(request, false);
+            logRequestParams(chatRequest);
+            HttpUtils.HttpConfig config = createHttpConfig();
+            return aiHttpUtils.postRaw(
+                    aiProperties.getDeepSeek().getEndpoint(),
+                    new HashMap<>(),
+                    chatRequest,
+                    config
+            );
+        } catch (Exception e) {
+            log.error("[DeepSeek] 调用失败: {}", e.getMessage(), e);
+            throw new AiException("DeepSeek调用失败", e);
+        }
+    }
+
+    @Override
+    public Flux<String> streamChatRaw(ModelRequestVO request) throws AiException {
+        HttpDeepSeekChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
+        StreamHttpUtils.StreamHttpConfig<HttpDeepSeekChatRequest, String> config = StreamHttpUtils.StreamHttpConfig
+                .<HttpDeepSeekChatRequest, String>builder()
+                .apiKey(aiProperties.getDeepSeek().getApiKey())
+                .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
+                .build();
+        return streamHttpUtils.postStreamRaw(
+                aiProperties.getDeepSeek().getEndpoint(),
+                chatRequest,
+                config
+        );
+    }
+
     /**
      * 构建聊天请求对象
      *
@@ -92,12 +131,12 @@ public class DeepSeekService extends AbstractAiService {
      */
     private HttpDeepSeekChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpDeepSeekChatRequest chatRequest = new HttpDeepSeekChatRequest();
-        chatRequest.setModel(request.getModel());
+        chatRequest.setModel(getModel(request, aiProperties.getDeepSeek().getModel()));
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);
-        chatRequest.setTemperature(request.getTemperature());
-        chatRequest.setTopP(request.getTopP());
-        chatRequest.setMaxTokens(request.getMaxTokens());
+        chatRequest.setTemperature(getTemperature(request, aiProperties.getDeepSeek().getTemperature()));
+        chatRequest.setTopP(getTopP(request, aiProperties.getDeepSeek().getTopP()));
+        chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getDeepSeek().getMaxTokens()));
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -111,6 +150,23 @@ public class DeepSeekService extends AbstractAiService {
      */
     private List<HttpDeepSeekChatRequest.Message> buildMessages(ModelRequestVO request) {
         List<HttpDeepSeekChatRequest.Message> messages = new ArrayList<>();
+        
+        // 如果设置了 systemPrompt，系统消息放在最前面
+        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isEmpty()) {
+            messages.add(createMessage(AiRole.SYSTEM, request.getSystemPrompt()));
+        }
+        
+        // 如果请求中提供了消息列表，添加消息列表（跳过其中的 system 消息，因为已经在最前面添加了）
+        if (!CollectionUtils.isEmpty(request.getMessages())) {
+            for (ModelRequestVO.Message voMessage : request.getMessages()) {
+                HttpDeepSeekChatRequest.Message message = new HttpDeepSeekChatRequest.Message();
+                message.setRole(voMessage.getRole());
+                message.setContent(voMessage.getContent());
+                messages.add(message);
+            }
+        }
+        
+        // 否则使用原来的逻辑：添加用户消息
         messages.add(createMessage(AiRole.USER, request.getPrompt()));
         return messages;
     }
@@ -137,6 +193,7 @@ public class DeepSeekService extends AbstractAiService {
      * @throws IOException 请求异常
      */
     private HttpDeepSeekChatResponse sendHttpRequest(HttpDeepSeekChatRequest chatRequest) throws IOException {
+        logRequestParams(chatRequest);
         HttpUtils.HttpConfig config = createHttpConfig();
         return aiHttpUtils.post(
                 aiProperties.getDeepSeek().getEndpoint(),
@@ -155,6 +212,7 @@ public class DeepSeekService extends AbstractAiService {
      */
     private Flux<String> sendStreamRequest(ModelRequestVO request) {
         HttpDeepSeekChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
         StreamHttpUtils.StreamHttpConfig<HttpDeepSeekChatRequest, String> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getDeepSeek().getEndpoint(),
@@ -173,8 +231,8 @@ public class DeepSeekService extends AbstractAiService {
                 .apiKey(aiProperties.getDeepSeek().getApiKey())
                 .requestInterceptor(r -> log.debug("[DeepSeek] 请求URL: {}", r.getUrl()))
                 .responseInterceptor(response ->
-                        log.debug("[DeepSeek] 响应状态: {}, 响应内容: {}", 
-                                 response.getStatus(), truncateForLog(response.body(), 200)))
+                        log.debug("[DeepSeek] 响应状态: {}, 响应内容: {}",
+                                response.getStatus(), truncateForLog(response.body(), 200)))
                 .build();
     }
 

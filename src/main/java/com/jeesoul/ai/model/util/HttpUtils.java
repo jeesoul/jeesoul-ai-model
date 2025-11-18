@@ -49,6 +49,40 @@ public class HttpUtils {
     }
 
     /**
+     * 发送 POST 请求，返回原始响应体（JSON字符串）
+     *
+     * @param <T>     请求体类型
+     * @param url     请求URL
+     * @param headers 请求头
+     * @param body    请求体
+     * @param config  HTTP配置
+     * @return 原始响应体（JSON字符串）
+     * @throws IOException 当请求失败时抛出
+     */
+    public <T> String postRaw(String url, Map<String, String> headers, T body, HttpConfig config)
+            throws IOException {
+        try {
+            // 创建请求
+            HttpRequest request = createRequest(url, Method.POST, headers, body, config);
+            // 发送请求
+            HttpResponse response = request.execute();
+            // 应用响应拦截器
+            if (config.getResponseInterceptor() != null) {
+                config.getResponseInterceptor().accept(response);
+            }
+            // 检查响应状态
+            if (!response.isOk()) {
+                throw new IOException("HTTP请求失败: " + response.getStatus() + " - " + response.body());
+            }
+            // 返回原始响应体
+            return response.body();
+        } catch (Exception e) {
+            log.error("HTTP请求失败: {}", url, e);
+            throw new IOException("HTTP请求失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 发送 GET 请求
      *
      * @param <R>          响应类型，必须是 BaseResponse 的子类

@@ -3,6 +3,7 @@ package com.jeesoul.ai.model.service;
 import com.jeesoul.ai.model.config.AiProperties;
 import com.jeesoul.ai.model.constant.AiRole;
 import com.jeesoul.ai.model.util.HttpUtils;
+import com.jeesoul.ai.model.util.JsonUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import lombok.RequiredArgsConstructor;
@@ -53,9 +54,6 @@ public abstract class AbstractAiService implements AiService {
         }
         if (StringUtils.isBlank(request.getPrompt())) {
             throw new IllegalArgumentException("提示词(prompt)不能为空");
-        }
-        if (StringUtils.isBlank(request.getModel())) {
-            throw new IllegalArgumentException("模型版本(model)不能为空");
         }
         // 验证 temperature
         if (request.getTemperature() != null) {
@@ -182,5 +180,80 @@ public abstract class AbstractAiService implements AiService {
             return content;
         }
         return content.substring(0, maxLength) + "... (共" + content.length() + "字符)";
+    }
+
+    /**
+     * 打印请求参数（debug级别）
+     *
+     * @param requestBody 请求体对象
+     */
+    protected void logRequestParams(Object requestBody) {
+        if (log.isDebugEnabled()) {
+            String json = JsonUtils.toJson(requestBody);
+            log.debug("[{}] 请求参数: {}", getModelName(), json);
+        }
+    }
+
+    /**
+     * 获取温度参数，优先使用请求参数，如果请求参数为空则使用配置参数
+     *
+     * @param request           请求参数
+     * @param configTemperature 配置中的温度值
+     * @return 温度值
+     */
+    protected Double getTemperature(ModelRequestVO request, Double configTemperature) {
+        if (request.getTemperature() != null) {
+            return request.getTemperature();
+        }
+        return configTemperature;
+    }
+
+    /**
+     * 获取topP参数，优先使用请求参数，如果请求参数为空则使用配置参数
+     *
+     * @param request     请求参数
+     * @param configTopP  配置中的topP值
+     * @return topP值
+     */
+    protected Double getTopP(ModelRequestVO request, Double configTopP) {
+        if (request.getTopP() != null) {
+            return request.getTopP();
+        }
+        return configTopP;
+    }
+
+    /**
+     * 获取最大token数，优先使用请求参数，如果请求参数为空则使用配置参数
+     *
+     * @param request         请求参数
+     * @param configMaxTokens 配置中的最大token数
+     * @return 最大token数
+     */
+    protected Integer getMaxTokens(ModelRequestVO request, Integer configMaxTokens) {
+        if (request.getMaxTokens() != null) {
+            return request.getMaxTokens();
+        }
+        return configMaxTokens;
+    }
+
+    /**
+     * 获取模型名称，优先使用请求参数，如果请求参数为空则使用配置参数
+     *
+     * @param request     请求参数
+     * @param configModel 配置中的模型名称
+     * @return 模型名称
+     * @throws IllegalArgumentException 如果请求参数和配置中都没有模型名称时抛出
+     */
+    protected String getModel(ModelRequestVO request, String configModel) {
+        String model = null;
+        if (StringUtils.isNotBlank(request.getModel())) {
+            model = request.getModel();
+        } else {
+            model = configModel;
+        }
+        if (StringUtils.isBlank(model)) {
+            throw new IllegalArgumentException("模型版本(model)不能为空，请在请求参数或配置文件中设置");
+        }
+        return model;
     }
 }

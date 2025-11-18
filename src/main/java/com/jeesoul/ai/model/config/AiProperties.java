@@ -47,6 +47,26 @@ public class AiProperties {
          * WebSocket 服务端点
          */
         private String endpoint = "https://spark-api-open.xf-yun.com/v2/chat/completions";
+
+        /**
+         * 温度
+         */
+        private Double temperature = 0.7;
+
+        /**
+         * top_p
+         */
+        private Double topP = 0.9;
+
+        /**
+         * 最大token数
+         */
+        private Integer maxTokens = 2000;
+
+        /**
+         * 模型名称
+         */
+        private String model;
     }
 
     /**
@@ -63,6 +83,26 @@ public class AiProperties {
          * 服务端点
          */
         private String endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+
+        /**
+         * 温度
+         */
+        private Double temperature = 0.7;
+
+        /**
+         * top_p
+         */
+        private Double topP = 0.9;
+
+        /**
+         * 最大token数
+         */
+        private Integer maxTokens = 2000;
+
+        /**
+         * 模型名称
+         */
+        private String model;
     }
 
     /**
@@ -79,6 +119,26 @@ public class AiProperties {
          * 服务端点
          */
         private String endpoint = "https://api.deepseek.com/v1/chat/completions";
+
+        /**
+         * 温度
+         */
+        private Double temperature = 0.7;
+
+        /**
+         * top_p
+         */
+        private Double topP = 0.9;
+
+        /**
+         * 最大token数
+         */
+        private Integer maxTokens = 2000;
+
+        /**
+         * 模型名称
+         */
+        private String model;
     }
 
     /**
@@ -95,6 +155,26 @@ public class AiProperties {
          * 服务端点
          */
         private String endpoint = "https://api.openai.com/v1/chat/completions";
+
+        /**
+         * 温度
+         */
+        private Double temperature = 0.7;
+
+        /**
+         * top_p
+         */
+        private Double topP = 0.9;
+
+        /**
+         * 最大token数
+         */
+        private Integer maxTokens = 2000;
+
+        /**
+         * 模型名称
+         */
+        private String model;
     }
 
     /**
@@ -111,5 +191,25 @@ public class AiProperties {
          * 服务端点
          */
         private String endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
+
+        /**
+         * 温度
+         */
+        private Double temperature = 0.7;
+
+        /**
+         * top_p
+         */
+        private Double topP = 0.9;
+
+        /**
+         * 最大token数
+         */
+        private Integer maxTokens = 2000;
+
+        /**
+         * 模型名称
+         */
+        private String model;
     }
 }

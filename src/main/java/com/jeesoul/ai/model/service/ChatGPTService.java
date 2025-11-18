@@ -83,6 +83,41 @@ public class ChatGPTService extends AbstractAiService {
         return sendStreamRequest(request);
     }
 
+    @Override
+    public String httpChatRaw(ModelRequestVO request) throws AiException {
+        // 参数校验
+        validateRequest(request);
+        // 警告不支持的功能
+        warnUnsupportedFeatures(request);
+
+        try {
+            HttpChatGPTChatRequest chatRequest = buildChatRequest(request, false);
+            logRequestParams(chatRequest);
+            HttpUtils.HttpConfig config = createHttpConfig();
+            return aiHttpUtils.postRaw(
+                    aiProperties.getChatGpt().getEndpoint(),
+                    new HashMap<>(),
+                    chatRequest,
+                    config
+            );
+        } catch (Exception e) {
+            log.error("[ChatGPT] 调用失败: {}", e.getMessage(), e);
+            throw new AiException("ChatGPT调用失败", e);
+        }
+    }
+
+    @Override
+    public Flux<String> streamChatRaw(ModelRequestVO request) throws AiException {
+        HttpChatGPTChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
+        StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, String> config = createStreamConfig();
+        return streamHttpUtils.postStreamRaw(
+                aiProperties.getChatGpt().getEndpoint(),
+                chatRequest,
+                config
+        );
+    }
+
     /**
      * 构建聊天请求对象
      *
@@ -92,12 +127,12 @@ public class ChatGPTService extends AbstractAiService {
      */
     private HttpChatGPTChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpChatGPTChatRequest chatRequest = new HttpChatGPTChatRequest();
-        chatRequest.setModel(request.getModel());
+        chatRequest.setModel(getModel(request, aiProperties.getChatGpt().getModel()));
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);
-        chatRequest.setTemperature(request.getTemperature());
-        chatRequest.setTopP(request.getTopP());
-        chatRequest.setMaxTokens(request.getMaxTokens());
+        chatRequest.setTemperature(getTemperature(request, aiProperties.getChatGpt().getTemperature()));
+        chatRequest.setTopP(getTopP(request, aiProperties.getChatGpt().getTopP()));
+        chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getChatGpt().getMaxTokens()));
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -111,11 +146,23 @@ public class ChatGPTService extends AbstractAiService {
      */
     private List<HttpChatGPTChatRequest.Message> buildMessages(ModelRequestVO request) {
         List<HttpChatGPTChatRequest.Message> messages = new ArrayList<>();
-        // 添加系统消息
+        
+        // 如果设置了 systemPrompt，系统消息放在最前面
         if (request.getSystemPrompt() != null && !request.getSystemPrompt().isEmpty()) {
             messages.add(createMessage(AiRole.SYSTEM, request.getSystemPrompt()));
         }
-        // 添加用户消息
+        
+        // 如果请求中提供了消息列表，添加消息列表（跳过其中的 system 消息，因为已经在最前面添加了）
+        if (!CollectionUtils.isEmpty(request.getMessages())) {
+            for (ModelRequestVO.Message voMessage : request.getMessages()) {
+                HttpChatGPTChatRequest.Message message = new HttpChatGPTChatRequest.Message();
+                message.setRole(voMessage.getRole());
+                message.setContent(voMessage.getContent());
+                messages.add(message);
+            }
+        }
+        
+        // 否则使用原来的逻辑：添加用户消息
         messages.add(createMessage(AiRole.USER, request.getPrompt()));
         return messages;
     }
@@ -142,6 +189,7 @@ public class ChatGPTService extends AbstractAiService {
      * @throws IOException 请求异常
      */
     private HttpChatGPTChatResponse sendHttpRequest(HttpChatGPTChatRequest chatRequest) throws IOException {
+        logRequestParams(chatRequest);
         HttpUtils.HttpConfig config = createHttpConfig();
         return aiHttpUtils.post(
                 aiProperties.getChatGpt().getEndpoint(),
@@ -160,6 +208,7 @@ public class ChatGPTService extends AbstractAiService {
      */
     private Flux<String> sendStreamRequest(ModelRequestVO request) {
         HttpChatGPTChatRequest chatRequest = buildChatRequest(request, true);
+        logRequestParams(chatRequest);
         StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, String> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getChatGpt().getEndpoint(),
