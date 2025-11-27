@@ -41,15 +41,37 @@
 ai:
   qwen:
     api-key: your-qwen-api-key
+    temperature: 0.7      # 可选，采样温度，默认0.7
+    top-p: 0.9           # 可选，核采样参数，默认0.9
+    max-tokens: 2000     # 可选，最大token数，默认2000
+    model: qwen-turbo    # 可选，默认模型名称
   chat-gpt:
     api-key: your-chatgpt-api-key
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: gpt-3.5-turbo
   spark:
     api-key: your-spark-api-key
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: spark-v3.5
   deep-seek:
     api-key: your-deepseek-api-key
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: deepseek-chat
   qwen-vl:  # 多模态模型
     api-key: your-qwen-vl-api-key
+    temperature: 0.7
+    top-p: 0.9
+    max-tokens: 2000
+    model: qwen-vl-plus
 ```
+
+> 💡 **提示**：`temperature`、`top-p`、`max-tokens`、`model` 为可选配置项，如果不配置会使用默认值。这些参数也可以在请求中动态指定，请求参数优先级高于配置。
 
 ### 3. 开始使用
 
@@ -389,8 +411,8 @@ ModelResponseVO response = claudeService.httpChat(request);
 | `systemPrompt` | String | 否 | 系统提示词(所有模型都支持，会自动添加到消息列表最前面) |
 | `enableThinking` | Boolean | 否 | 是否开启思考模式(仅QWen支持) |
 | `temperature` | Double | 否 | 采样温度(0-2，默认0.7，可在yml中配置) |
-| `topP` | Double | 否 | 核采样参数(0-1，默认0.9，可在yml中配置) |
-| `maxTokens` | Integer | 否 | 最大生成Token数(默认2000，可在yml中配置) |
+| `topP` | Double | 否 | 核采样参数(0-1，请求中默认null，yml中默认0.9) |
+| `maxTokens` | Integer | 否 | 最大生成Token数(请求中默认null，yml中默认2000) |
 | `params` | Map | 否 | 自定义参数(模型特定参数) |
 
 **Message 对象结构：**
@@ -627,9 +649,9 @@ stream.subscribe(System.out::print);  // ← 必须调用 subscribe()
 
 ### 模型不支持某功能
 
-查看日志警告：
+查看日志警告（注意：v1.0.8 版本后所有模型都支持 systemPrompt）：
 ```
-WARN: [QWen] 当前模型不支持 systemPrompt，该参数将被忽略
+WARN: [QWen] 当前模型不支持 enableThinking，该参数将被忽略
 ```
 
 ## 📝 更新日志
