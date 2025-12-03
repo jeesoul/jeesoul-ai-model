@@ -6,12 +6,14 @@ import com.jeesoul.ai.model.constant.AiRole;
 import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.exception.AiException;
 import com.jeesoul.ai.model.request.HttpSparkChatRequest;
+import com.jeesoul.ai.model.response.HttpBaseChatResponse;
 import com.jeesoul.ai.model.response.HttpSparkChatResponse;
 import com.jeesoul.ai.model.response.StreamSparkResponse;
 import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
+import com.jeesoul.ai.model.vo.TokenUsageVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
@@ -48,7 +50,7 @@ public class SparkService extends AbstractAiService {
 
     @Override
     protected boolean supportThinking() {
-        return false;
+        return true;  // Spark支持深度思考模式
     }
 
     @Override
@@ -63,10 +65,27 @@ public class SparkService extends AbstractAiService {
             HttpSparkChatResponse response = sendHttpRequest(chatRequest);
 
             if (CollectionUtils.isEmpty(response.getChoices())) {
-                return new ModelResponseVO("", AiModel.SPARK.getModelName());
+                return ModelResponseVO.of("", AiModel.SPARK.getModelName(), 
+                        chatRequest.getModel());
             }
-            String result = response.getChoices().get(0).getMessage().getContent();
-            return new ModelResponseVO(result, AiModel.SPARK.getModelName());
+            
+            HttpBaseChatResponse.BaseChoice.Message message = response.getChoices().get(0).getMessage();
+            String result = message.getContent();
+            
+            // 提取usage信息
+            TokenUsageVO usage = extractUsage(response);
+            
+            // 提取思考内容（reasoning_content）
+            String thinkingContent = message.getReasoningContent();
+            
+            // 返回完整的响应信息
+            return ModelResponseVO.of(
+                    result,
+                    thinkingContent,
+                    AiModel.SPARK.getModelName(),
+                    chatRequest.getModel(),
+                    usage
+            );
         } catch (Exception e) {
             log.error("[Spark] 调用失败: {}", e.getMessage(), e);
             throw new AiException("Spark调用失败", e);
@@ -75,15 +94,35 @@ public class SparkService extends AbstractAiService {
 
     @Override
     public Flux<ModelResponseVO> streamChat(ModelRequestVO request) throws AiException {
+        // 获取实际使用的模型版本
+        String actualModel = getModel(request, aiProperties.getSpark().getModel());
+        
         return sendStreamRequest(request)
-                .map(content -> new ModelResponseVO(content.getContent(), content.getThinking(),
-                        AiModel.SPARK.getModelName()));
+                .filter(content -> {
+                    // 过滤掉content为空的chunk（但保留只有usage的chunk）
+                    String text = content.getContent();
+                    return (text != null && !text.isEmpty()) || content.getUsage() != null;
+                })
+                .map(content -> {
+                    // 构建完整的响应对象，包含usage信息（如果有）
+                    return ModelResponseVO.of(
+                            content.getContent(),  // content字段已包含thinking或正常内容
+                            content.getThinkingContent(),
+                            AiModel.SPARK.getModelName(),
+                            actualModel,
+                            content.getUsage()  // 只有最后一个chunk有usage
+                    );
+                });
     }
 
     @Override
     public Flux<String> streamChatStr(ModelRequestVO request) throws AiException {
-        // 统一返回 content 字符串，而不是JSON
-        return sendStreamRequest(request).map(ResultContent::getContent);
+        return sendStreamRequest(request)
+                .filter(content -> {
+                    String text = content.getContent();
+                    return text != null && !text.isEmpty();  // 过滤掉null和空字符串
+                })
+                .map(ResultContent::getContent);
     }
 
     @Override
@@ -140,6 +179,16 @@ public class SparkService extends AbstractAiService {
         chatRequest.setTemperature(getTemperature(request, aiProperties.getSpark().getTemperature()));
         chatRequest.setTopP(getTopP(request, aiProperties.getSpark().getTopP()));
         chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getSpark().getMaxTokens()));
+        
+        // 设置思考模式（Spark支持深度思考）
+        // 支持：enabled（开启）、disabled（关闭）、auto（自动判断）
+        // 注意：默认为enabled，所以需要显式设置disabled来关闭
+        if (request.isEnableThinking()) {
+            chatRequest.setThinking(HttpSparkChatRequest.ThinkingConfig.enabled());
+        } else {
+            chatRequest.setThinking(HttpSparkChatRequest.ThinkingConfig.disabled());
+        }
+        
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -251,6 +300,27 @@ public class SparkService extends AbstractAiService {
                 .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
                 .responseProcessor(new StreamSparkResponse())
                 .build();
+    }
+
+    /**
+     * 从响应中提取Token使用统计
+     *
+     * @param response HTTP响应对象
+     * @return TokenUsageVO对象，如果响应中没有usage信息则返回null
+     */
+    private TokenUsageVO extractUsage(HttpSparkChatResponse response) {
+        if (response == null || response.getUsage() == null) {
+            return null;
+        }
+        
+        HttpSparkChatResponse.Usage usage = response.getUsage();
+        
+        // Spark使用标准的promptTokens和completionTokens字段
+        return TokenUsageVO.of(
+                usage.getPromptTokens(),
+                usage.getCompletionTokens(),
+                usage.getTotalTokens()
+        );
     }
 
 }

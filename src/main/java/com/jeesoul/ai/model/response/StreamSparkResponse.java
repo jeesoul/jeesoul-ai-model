@@ -64,49 +64,84 @@ public class StreamSparkResponse extends StreamBaseResponse<ResultContent> {
     /**
      * 提取响应内容
      * 提取规则：
-     * 1. 检查响应中是否包含choices字段
-     * 2. 获取第一个choice中的delta字段
-     * 3. 优先获取content字段内容
-     * 4. 如果没有content则尝试获取reasoning_content
-     * 5. 如果都没有则返回空流
+     * 1. 提取usage信息（如果存在）
+     * 2. 检查响应中是否包含choices字段
+     * 3. 获取第一个choice中的delta字段
+     * 4. 优先获取content字段内容
+     * 5. 如果没有content则尝试获取reasoning_content
+     * 6. 如果都没有则返回空流
      *
      * @param responseMap 解析后的响应数据Map
      * @return 提取的文本内容流，如果无法提取则返回空流
      */
     @Override
     protected Flux<ResultContent> extractContent(Map<String, Object> responseMap) {
+        ResultContent response = new ResultContent();
+        boolean hasContent = false;
+
+        // 提取usage信息（通常在最后一个chunk中）
+        if (responseMap.containsKey("usage")) {
+            Map<String, Object> usageMap = JsonUtils.toMap(responseMap.get("usage"));
+            if (usageMap != null) {
+                Integer promptTokens = (Integer) usageMap.get("prompt_tokens");
+                Integer completionTokens = (Integer) usageMap.get("completion_tokens");
+                Integer totalTokens = (Integer) usageMap.get("total_tokens");
+                if (promptTokens != null || completionTokens != null || totalTokens != null) {
+                    response.setUsage(com.jeesoul.ai.model.vo.TokenUsageVO.of(
+                            promptTokens, completionTokens, totalTokens));
+                    hasContent = true;
+                }
+            }
+        }
+
         // 检查choices字段
         if (!responseMap.containsKey("choices") || !(responseMap.get("choices") instanceof List)) {
-            return Flux.empty();
+            return hasContent ? Flux.just(response) : Flux.empty();
         }
+        
         List<Map<String, Object>> choices = JsonUtils.fromJson(
                 JsonUtils.toJson(responseMap.get("choices")),
                 new TypeReference<List<Map<String, Object>>>() {
                 }
         );
         if (choices == null || choices.isEmpty()) {
-            return Flux.empty();
+            return hasContent ? Flux.just(response) : Flux.empty();
         }
+        
         // 获取第一个choice
         Map<String, Object> choice = choices.get(0);
         if (!choice.containsKey("delta")) {
-            return Flux.empty();
+            return hasContent ? Flux.just(response) : Flux.empty();
         }
+        
         // 获取delta中的内容
         Map<String, Object> delta = JsonUtils.toMap(choice.get("delta"));
         if (delta == null) {
-            return Flux.empty();
+            return hasContent ? Flux.just(response) : Flux.empty();
         }
-        ResultContent response = new ResultContent();
-        String content = null;
-        if (delta.containsKey("content")) {
-            content = (String) delta.get("content");
-            response.setThinking(Boolean.FALSE);
-        } else if (delta.containsKey("reasoning_content")) {
-            content = (String) delta.get("reasoning_content");
-            response.setThinking(Boolean.TRUE);
+        
+        // 先尝试获取reasoning_content（思考内容）
+        String reasoningContent = delta.containsKey("reasoning_content") 
+            ? (String) delta.get("reasoning_content") : null;
+        
+        // 再获取content（正常内容）
+        String contentText = delta.containsKey("content") 
+            ? (String) delta.get("content") : null;
+        
+        // 优先使用reasoning_content（如果有值）
+        if (reasoningContent != null && !reasoningContent.isEmpty()) {
+            response.setContent(reasoningContent);  // ✅ content字段包含思考文本
+            response.setThinking(true);  // 标识这是思考内容
+            response.setThinkingContent(reasoningContent);  // 存储思考文本
+            hasContent = true;
+        } 
+        // 否则使用content（如果有值）
+        else if (contentText != null && !contentText.isEmpty()) {
+            response.setContent(contentText);  // ✅ content字段包含正常文本
+            response.setThinking(false);  // 标识这是正常内容
+            hasContent = true;
         }
-        response.setContent(content);
-        return content != null ? Flux.just(response) : Flux.empty();
+        
+        return hasContent ? Flux.just(response) : Flux.empty();
     }
 }

@@ -28,23 +28,5 @@ public class HttpQWenChatResponse extends HttpBaseChatResponse {
          */
         private Map<String, Object> parameters;
     }
-
-    /**
-     * Spark使用情况类
-     * 继承自Usage，增加输入输出token数
-     */
-    @EqualsAndHashCode(callSuper = true)
-    @Data
-    public static class QWenUsage extends HttpBaseChatResponse.Usage {
-        /**
-         * 输入token数
-         */
-        private Integer inputTokens;
-
-        /**
-         * 输出token数
-         */
-        private Integer outputTokens;
-    }
 }
 

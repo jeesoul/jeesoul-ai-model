@@ -43,6 +43,13 @@ public class HttpDeepSeekChatRequest {
     private boolean stream;
 
     /**
+     * 思考配置（DeepSeek专用）
+     * 用于启用思考模式：{"type": "enabled"}
+     * 文档：https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
+     */
+    private ThinkingConfig thinking;
+
+    /**
      * 消息实体类
      */
     @Data
@@ -56,5 +63,35 @@ public class HttpDeepSeekChatRequest {
          * 内容
          */
         private String content;
+    }
+
+    /**
+     * 思考配置类
+     * 用于启用DeepSeek的思考模式
+     */
+    @Data
+    public static class ThinkingConfig {
+        /**
+         * 思考类型：enabled、disabled
+         */
+        private String type;
+
+        /**
+         * 创建启用思考的配置
+         */
+        public static ThinkingConfig enabled() {
+            ThinkingConfig config = new ThinkingConfig();
+            config.setType("enabled");
+            return config;
+        }
+
+        /**
+         * 创建禁用思考的配置
+         */
+        public static ThinkingConfig disabled() {
+            ThinkingConfig config = new ThinkingConfig();
+            config.setType("disabled");
+            return config;
+        }
     }
 }

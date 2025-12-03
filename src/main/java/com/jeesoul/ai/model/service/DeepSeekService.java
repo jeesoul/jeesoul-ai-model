@@ -3,6 +3,7 @@ package com.jeesoul.ai.model.service;
 import com.jeesoul.ai.model.config.AiProperties;
 import com.jeesoul.ai.model.constant.AiModel;
 import com.jeesoul.ai.model.constant.AiRole;
+import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.exception.AiException;
 import com.jeesoul.ai.model.request.HttpDeepSeekChatRequest;
 import com.jeesoul.ai.model.response.HttpDeepSeekChatResponse;
@@ -11,6 +12,7 @@ import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
+import com.jeesoul.ai.model.vo.TokenUsageVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
@@ -47,7 +49,7 @@ public class DeepSeekService extends AbstractAiService {
 
     @Override
     protected boolean supportThinking() {
-        return false;
+        return true;  // DeepSeek支持思考模式
     }
 
     @Override
@@ -62,10 +64,26 @@ public class DeepSeekService extends AbstractAiService {
             HttpDeepSeekChatResponse response = sendHttpRequest(chatRequest);
 
             if (CollectionUtils.isEmpty(response.getChoices())) {
-                return new ModelResponseVO("", AiModel.DEEP_SEEK.getModelName());
+                return ModelResponseVO.of("", AiModel.DEEP_SEEK.getModelName(), 
+                        chatRequest.getModel());
             }
+            
             String result = response.getChoices().get(0).getMessage().getContent();
-            return new ModelResponseVO(result, AiModel.DEEP_SEEK.getModelName());
+            
+            // 提取usage信息
+            TokenUsageVO usage = extractUsage(response);
+            
+            // 提取思考内容（reasoning_content）
+            String thinkingContent = response.getChoices().get(0).getMessage().getReasoningContent();
+            
+            // 返回完整的响应信息
+            return ModelResponseVO.of(
+                    result,
+                    thinkingContent,
+                    AiModel.DEEP_SEEK.getModelName(),
+                    chatRequest.getModel(),
+                    usage
+            );
         } catch (Exception e) {
             log.error("[DeepSeek] 调用失败: {}", e.getMessage(), e);
             throw new AiException("DeepSeek调用失败", e);
@@ -74,13 +92,35 @@ public class DeepSeekService extends AbstractAiService {
 
     @Override
     public Flux<ModelResponseVO> streamChat(ModelRequestVO request) throws AiException {
+        // 获取实际使用的模型版本
+        String actualModel = getModel(request, aiProperties.getDeepSeek().getModel());
+        
         return sendStreamRequest(request)
-                .map(content -> new ModelResponseVO(content, AiModel.DEEP_SEEK.getModelName()));
+                .filter(content -> {
+                    // 过滤掉content为空的chunk（但保留只有usage的chunk）
+                    String text = content.getContent();
+                    return (text != null && !text.isEmpty()) || content.getUsage() != null;
+                })
+                .map(content -> {
+                    // 构建完整的响应对象，包含usage信息（如果有）
+                    return ModelResponseVO.of(
+                            content.getContent(),  // content字段已包含thinking或正常内容
+                            content.getThinkingContent(),
+                            AiModel.DEEP_SEEK.getModelName(),
+                            actualModel,
+                            content.getUsage()  // 只有最后一个chunk有usage
+                    );
+                });
     }
 
     @Override
     public Flux<String> streamChatStr(ModelRequestVO request) throws AiException {
-        return sendStreamRequest(request);
+        return sendStreamRequest(request)
+                .filter(content -> {
+                    String text = content.getContent();
+                    return text != null && !text.isEmpty();  // 过滤掉null和空字符串
+                })
+                .map(ResultContent::getContent);
     }
 
     @Override
@@ -137,6 +177,15 @@ public class DeepSeekService extends AbstractAiService {
         chatRequest.setTemperature(getTemperature(request, aiProperties.getDeepSeek().getTemperature()));
         chatRequest.setTopP(getTopP(request, aiProperties.getDeepSeek().getTopP()));
         chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getDeepSeek().getMaxTokens()));
+        
+        // 设置思考模式（DeepSeek支持）
+        // 文档：https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
+        if (request.isEnableThinking()) {
+            chatRequest.setThinking(HttpDeepSeekChatRequest.ThinkingConfig.enabled());
+        } else {
+            chatRequest.setThinking(HttpDeepSeekChatRequest.ThinkingConfig.disabled());
+        }
+        
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -210,10 +259,10 @@ public class DeepSeekService extends AbstractAiService {
      * @param request 请求参数
      * @return 流式响应
      */
-    private Flux<String> sendStreamRequest(ModelRequestVO request) {
+    private Flux<ResultContent> sendStreamRequest(ModelRequestVO request) {
         HttpDeepSeekChatRequest chatRequest = buildChatRequest(request, true);
         logRequestParams(chatRequest);
-        StreamHttpUtils.StreamHttpConfig<HttpDeepSeekChatRequest, String> config = createStreamConfig();
+        StreamHttpUtils.StreamHttpConfig<HttpDeepSeekChatRequest, ResultContent> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getDeepSeek().getEndpoint(),
                 chatRequest,
@@ -241,12 +290,33 @@ public class DeepSeekService extends AbstractAiService {
      *
      * @return 流式配置对象
      */
-    private StreamHttpUtils.StreamHttpConfig<HttpDeepSeekChatRequest, String> createStreamConfig() {
-        return StreamHttpUtils.StreamHttpConfig.<HttpDeepSeekChatRequest, String>builder()
+    private StreamHttpUtils.StreamHttpConfig<HttpDeepSeekChatRequest, ResultContent> createStreamConfig() {
+        return StreamHttpUtils.StreamHttpConfig.<HttpDeepSeekChatRequest, ResultContent>builder()
                 .apiKey(aiProperties.getDeepSeek().getApiKey())
                 .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
                 .responseProcessor(new StreamDeepSeekResponse())
                 .build();
+    }
+
+    /**
+     * 从响应中提取Token使用统计
+     *
+     * @param response HTTP响应对象
+     * @return TokenUsageVO对象，如果响应中没有usage信息则返回null
+     */
+    private TokenUsageVO extractUsage(HttpDeepSeekChatResponse response) {
+        if (response == null || response.getUsage() == null) {
+            return null;
+        }
+        
+        HttpDeepSeekChatResponse.Usage usage = response.getUsage();
+        
+        // DeepSeek使用标准的promptTokens和completionTokens字段
+        return TokenUsageVO.of(
+                usage.getPromptTokens(),
+                usage.getCompletionTokens(),
+                usage.getTotalTokens()
+        );
     }
 
 }

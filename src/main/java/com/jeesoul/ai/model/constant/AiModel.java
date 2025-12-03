@@ -27,7 +27,11 @@ public enum AiModel {
     /**
      * 通义千问视觉理解（多模态）
      */
-    QWEN_VL("qwenVL", "qWenVLService");
+    QWEN_VL("qwenVL", "qWenVLService"),
+    /**
+     * 豆包（火山方舟）
+     */
+    DOUBAO("douBao", "douBaoService");
 
     /**
      * 模型名称

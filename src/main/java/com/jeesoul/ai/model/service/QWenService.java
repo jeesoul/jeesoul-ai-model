@@ -6,12 +6,14 @@ import com.jeesoul.ai.model.constant.AiRole;
 import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.exception.AiException;
 import com.jeesoul.ai.model.request.HttpQWenChatRequest;
+import com.jeesoul.ai.model.response.HttpBaseChatResponse;
 import com.jeesoul.ai.model.response.HttpQWenChatResponse;
 import com.jeesoul.ai.model.response.StreamQWenResponse;
 import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
+import com.jeesoul.ai.model.vo.TokenUsageVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
@@ -60,10 +62,27 @@ public class QWenService extends AbstractAiService {
             HttpQWenChatResponse response = sendHttpRequest(chatRequest);
 
             if (CollectionUtils.isEmpty(response.getChoices())) {
-                return new ModelResponseVO("", AiModel.Q_WEN.getModelName());
+                return ModelResponseVO.of("", AiModel.Q_WEN.getModelName(), 
+                        chatRequest.getModel());
             }
-            String result = response.getChoices().get(0).getMessage().getContent();
-            return new ModelResponseVO(result, AiModel.Q_WEN.getModelName());
+            
+            HttpBaseChatResponse.BaseChoice.Message message = response.getChoices().get(0).getMessage();
+            String result = message.getContent();
+            
+            // 提取usage信息
+            TokenUsageVO usage = extractUsage(response);
+            
+            // 提取思考内容（reasoning_content）
+            String thinkingContent = message.getReasoningContent();
+            
+            // 返回完整的响应信息
+            return ModelResponseVO.of(
+                    result,
+                    thinkingContent,
+                    AiModel.Q_WEN.getModelName(),
+                    chatRequest.getModel(),
+                    usage
+            );
         } catch (Exception e) {
             log.error("[QWen] 调用失败: {}", e.getMessage(), e);
             throw new AiException("QWen调用失败", e);
@@ -72,15 +91,35 @@ public class QWenService extends AbstractAiService {
 
     @Override
     public Flux<ModelResponseVO> streamChat(ModelRequestVO request) throws AiException {
+        // 获取实际使用的模型版本
+        String actualModel = getModel(request, aiProperties.getQwen().getModel());
+        
         return sendStreamRequest(request)
-                .map(content -> new ModelResponseVO(content.getContent(), content.getThinking(),
-                        AiModel.Q_WEN.getModelName()));
+                .filter(content -> {
+                    // 过滤掉content为空的chunk（但保留只有usage的chunk）
+                    String text = content.getContent();
+                    return (text != null && !text.isEmpty()) || content.getUsage() != null;
+                })
+                .map(content -> {
+                    // 构建完整的响应对象，包含usage信息（如果有）
+                    return ModelResponseVO.of(
+                            content.getContent(),  // content字段已包含thinking或正常内容
+                            content.getThinkingContent(),
+                            AiModel.Q_WEN.getModelName(),
+                            actualModel,
+                            content.getUsage()  // 只有最后一个chunk有usage
+                    );
+                });
     }
 
     @Override
     public Flux<String> streamChatStr(ModelRequestVO request) throws AiException {
-        // 统一返回 content 字符串，而不是JSON
-        return sendStreamRequest(request).map(ResultContent::getContent);
+        return sendStreamRequest(request)
+                .filter(content -> {
+                    String text = content.getContent();
+                    return text != null && !text.isEmpty();  // 过滤掉null和空字符串
+                })
+                .map(ResultContent::getContent);
     }
 
     @Override
@@ -131,11 +170,16 @@ public class QWenService extends AbstractAiService {
      */
     private HttpQWenChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpQWenChatRequest chatRequest = new HttpQWenChatRequest();
-        // 添加思考提示（如果启用）
+        // 设置思考模式
         if (request.isEnableThinking()) {
             chatRequest.setEnableThinking(Boolean.TRUE);
             HttpQWenChatRequest.ChatThink chatThink = new HttpQWenChatRequest.ChatThink();
             chatThink.setEnableThinking(Boolean.TRUE);
+            chatRequest.setChatTemplateKwargs(chatThink);
+        } else {
+            chatRequest.setEnableThinking(Boolean.FALSE);
+            HttpQWenChatRequest.ChatThink chatThink = new HttpQWenChatRequest.ChatThink();
+            chatThink.setEnableThinking(Boolean.FALSE);
             chatRequest.setChatTemplateKwargs(chatThink);
         }
         chatRequest.setModel(getModel(request, aiProperties.getQwen().getModel()));
@@ -254,6 +298,27 @@ public class QWenService extends AbstractAiService {
                 .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
                 .responseProcessor(new StreamQWenResponse())
                 .build();
+    }
+
+    /**
+     * 从响应中提取Token使用统计
+     *
+     * @param response HTTP响应对象
+     * @return TokenUsageVO对象，如果响应中没有usage信息则返回null
+     */
+    private TokenUsageVO extractUsage(HttpQWenChatResponse response) {
+        if (response == null || response.getUsage() == null) {
+            return null;
+        }
+        
+        HttpBaseChatResponse.Usage usage = response.getUsage();
+
+        // QWen使用标准的promptTokens和completionTokens字段
+        return TokenUsageVO.of(
+                usage.getPromptTokens(),
+                usage.getCompletionTokens(),
+                usage.getTotalTokens()
+        );
     }
 
 }

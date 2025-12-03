@@ -3,6 +3,7 @@ package com.jeesoul.ai.model.service;
 import com.jeesoul.ai.model.config.AiProperties;
 import com.jeesoul.ai.model.constant.AiModel;
 import com.jeesoul.ai.model.constant.AiRole;
+import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.exception.AiException;
 import com.jeesoul.ai.model.request.HttpChatGPTChatRequest;
 import com.jeesoul.ai.model.response.HttpChatGPTChatResponse;
@@ -11,6 +12,7 @@ import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
+import com.jeesoul.ai.model.vo.TokenUsageVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
@@ -62,10 +64,23 @@ public class ChatGPTService extends AbstractAiService {
             HttpChatGPTChatResponse response = sendHttpRequest(chatRequest);
 
             if (CollectionUtils.isEmpty(response.getChoices())) {
-                return new ModelResponseVO("", AiModel.CHATGPT.getModelName());
+                return ModelResponseVO.of("", AiModel.CHATGPT.getModelName(), 
+                        chatRequest.getModel());
             }
+            
             String result = response.getChoices().get(0).getMessage().getContent();
-            return new ModelResponseVO(result, AiModel.CHATGPT.getModelName());
+            
+            // 提取usage信息
+            TokenUsageVO usage = extractUsage(response);
+            
+            // 返回完整的响应信息
+            return ModelResponseVO.of(
+                    result,
+                    null,
+                    AiModel.CHATGPT.getModelName(),
+                    chatRequest.getModel(),
+                    usage
+            );
         } catch (Exception e) {
             log.error("[ChatGPT] 调用失败: {}", e.getMessage(), e);
             throw new AiException("ChatGPT调用失败", e);
@@ -74,13 +89,35 @@ public class ChatGPTService extends AbstractAiService {
 
     @Override
     public Flux<ModelResponseVO> streamChat(ModelRequestVO request) throws AiException {
+        // 获取实际使用的模型版本
+        String actualModel = getModel(request, aiProperties.getChatGpt().getModel());
+        
         return sendStreamRequest(request)
-                .map(content -> new ModelResponseVO(content, AiModel.CHATGPT.getModelName()));
+                .filter(content -> {
+                    // 过滤掉content为空的chunk（但保留只有usage的chunk）
+                    String text = content.getContent();
+                    return (text != null && !text.isEmpty()) || content.getUsage() != null;
+                })
+                .map(content -> {
+                    // 构建完整的响应对象，包含usage信息（如果有）
+                    return ModelResponseVO.of(
+                            content.getContent(),  // content字段已包含thinking或正常内容
+                            content.getThinkingContent(),
+                            AiModel.CHATGPT.getModelName(),
+                            actualModel,
+                            content.getUsage()  // 只有最后一个chunk有usage
+                    );
+                });
     }
 
     @Override
     public Flux<String> streamChatStr(ModelRequestVO request) throws AiException {
-        return sendStreamRequest(request);
+        return sendStreamRequest(request)
+                .filter(content -> {
+                    String text = content.getContent();
+                    return text != null && !text.isEmpty();  // 过滤掉null和空字符串
+                })
+                .map(ResultContent::getContent);
     }
 
     @Override
@@ -110,7 +147,11 @@ public class ChatGPTService extends AbstractAiService {
     public Flux<String> streamChatRaw(ModelRequestVO request) throws AiException {
         HttpChatGPTChatRequest chatRequest = buildChatRequest(request, true);
         logRequestParams(chatRequest);
-        StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, String> config = createStreamConfig();
+        StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, String> config = 
+            StreamHttpUtils.StreamHttpConfig.<HttpChatGPTChatRequest, String>builder()
+                .apiKey(aiProperties.getChatGpt().getApiKey())
+                .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
+                .build();
         return streamHttpUtils.postStreamRaw(
                 aiProperties.getChatGpt().getEndpoint(),
                 chatRequest,
@@ -206,10 +247,10 @@ public class ChatGPTService extends AbstractAiService {
      * @param request 请求参数
      * @return 流式响应
      */
-    private Flux<String> sendStreamRequest(ModelRequestVO request) {
+    private Flux<ResultContent> sendStreamRequest(ModelRequestVO request) {
         HttpChatGPTChatRequest chatRequest = buildChatRequest(request, true);
         logRequestParams(chatRequest);
-        StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, String> config = createStreamConfig();
+        StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, ResultContent> config = createStreamConfig();
         return streamHttpUtils.postStream(
                 aiProperties.getChatGpt().getEndpoint(),
                 chatRequest,
@@ -237,12 +278,33 @@ public class ChatGPTService extends AbstractAiService {
      *
      * @return 流式配置对象
      */
-    private StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, String> createStreamConfig() {
-        return StreamHttpUtils.StreamHttpConfig.<HttpChatGPTChatRequest, String>builder()
+    private StreamHttpUtils.StreamHttpConfig<HttpChatGPTChatRequest, ResultContent> createStreamConfig() {
+        return StreamHttpUtils.StreamHttpConfig.<HttpChatGPTChatRequest, ResultContent>builder()
                 .apiKey(aiProperties.getChatGpt().getApiKey())
                 .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
                 .responseProcessor(new StreamChatGPTResponse())
                 .build();
+    }
+
+    /**
+     * 从响应中提取Token使用统计
+     *
+     * @param response HTTP响应对象
+     * @return TokenUsageVO对象，如果响应中没有usage信息则返回null
+     */
+    private TokenUsageVO extractUsage(HttpChatGPTChatResponse response) {
+        if (response == null || response.getUsage() == null) {
+            return null;
+        }
+        
+        HttpChatGPTChatResponse.Usage usage = response.getUsage();
+        
+        // ChatGPT使用标准的promptTokens和completionTokens字段
+        return TokenUsageVO.of(
+                usage.getPromptTokens(),
+                usage.getCompletionTokens(),
+                usage.getTotalTokens()
+        );
     }
 
 }

@@ -32,6 +32,10 @@ public class AiProperties {
      * 通义千问视觉理解服务配置
      */
     private QWenVLProperties qwenVL = new QWenVLProperties();
+    /**
+     * 豆包（火山方舟）服务配置
+     */
+    private DouBaoProperties douBao = new DouBaoProperties();
 
     /**
      * 讯飞星火服务配置属性
@@ -209,6 +213,43 @@ public class AiProperties {
 
         /**
          * 模型名称
+         */
+        private String model;
+    }
+
+    /**
+     * 豆包（火山方舟）服务配置属性
+     */
+    @Data
+    public static class DouBaoProperties {
+        /**
+         * API 密钥
+         */
+        private String apiKey;
+
+        /**
+         * 服务端点
+         */
+        private String endpoint = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+
+        /**
+         * 温度
+         */
+        private Double temperature = 0.7;
+
+        /**
+         * top_p
+         */
+        private Double topP = 0.9;
+
+        /**
+         * 最大token数
+         */
+        private Integer maxTokens = 2000;
+
+        /**
+         * 模型名称
+         * 如：doubao-1-5-pro-32k-250115
          */
         private String model;
     }

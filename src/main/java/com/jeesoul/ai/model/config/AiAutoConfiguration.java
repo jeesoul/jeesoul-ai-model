@@ -1,7 +1,9 @@
 package com.jeesoul.ai.model.config;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+
 /**
  * 配置文件
  *
@@ -12,7 +14,7 @@ import org.springframework.context.annotation.Import;
 @EnableConfigurationProperties(AiProperties.class)
 @Import({QWenAutoConfiguration.class, ChatGPTAutoConfiguration.class,
         SparkAutoConfiguration.class, DeepSeekAutoConfiguration.class,
-        QWenVLAutoConfiguration.class})
+        QWenVLAutoConfiguration.class, DouBaoAutoConfiguration.class})
 public class AiAutoConfiguration {
 }
 

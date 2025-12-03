@@ -63,6 +63,13 @@ public class HttpBaseChatResponse extends HttpBaseResponse {
              * 内容
              */
             private String content;
+
+            /**
+             * 思考过程内容（reasoning_content）
+             * 仅在启用思考模式时有值（Spark、QWen、DeepSeek等支持）
+             */
+            @JsonProperty("reasoning_content")
+            private String reasoningContent;
         }
     }
 
