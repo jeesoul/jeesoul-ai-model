@@ -19,6 +19,8 @@ graph TB
         Spark["SparkService"] 
         ChatGPT["ChatGPTService"]
         DeepSeek["DeepSeekService"]
+        DouBao["DouBaoService"]
+        QWenVL["QWenVLService"]
     end
     
     subgraph "工具层"
@@ -36,6 +38,8 @@ graph TB
         SparkAPI["讯飞星火API"]
         ChatGPTAPI["ChatGPT API"]
         DeepSeekAPI["DeepSeek API"]
+        DouBaoAPI["豆包API"]
+        QWenVLAPI["千问视觉API"]
     end
     
     Client --> Factory
@@ -46,6 +50,8 @@ graph TB
     Interface --> Spark
     Interface --> ChatGPT
     Interface --> DeepSeek
+    Interface --> DouBao
+    Interface --> QWenVL
     
     QWen --> HttpUtils
     QWen --> StreamUtils
@@ -65,5 +71,15 @@ graph TB
     DeepSeek --> HttpUtils
     DeepSeek --> StreamUtils
     DeepSeek --> Config
-    DeepSeekAPI --> DeepSeek
+    DeepSeek --> DeepSeekAPI
+    
+    DouBao --> HttpUtils
+    DouBao --> StreamUtils
+    DouBao --> Config
+    DouBao --> DouBaoAPI
+    
+    QWenVL --> HttpUtils
+    QWenVL --> StreamUtils
+    QWenVL --> Config
+    QWenVL --> QWenVLAPI
 ``` 

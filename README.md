@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.9-SNAPSHOT</version>
+    <version>1.0.9</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -796,7 +796,7 @@ response.getUsage();            // Token统计
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.9-SNAPSHOT</version>
+    <version>1.0.9</version>
 </dependency>
 ```
 
@@ -955,7 +955,7 @@ eventSource.onmessage = (event) => {
 
 ## 📝 更新日志
 
-### v1.0.9-SNAPSHOT (开发中)
+### v1.0.9 (最新版本)
 
 **✨ 新增功能**
 - 🎉 **新增豆包(DouBao)模型支持** - 集成字节跳动豆包大模型

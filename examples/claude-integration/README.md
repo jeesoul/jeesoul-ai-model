@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.9</version>
 </dependency>
 ```
 
@@ -76,7 +76,15 @@ public class MyController {
                 .setSystemPrompt("你是一个专业的AI助手");
         
         // 调用Claude
-        return claudeService.httpChat(request);
+        ModelResponseVO response = claudeService.httpChat(request);
+        
+        // v1.0.9+ 新增功能：获取Token统计和模型信息
+        System.out.println("模型: " + response.getModelProvider() + " - " + response.getModelName());
+        if (response.getUsage() != null) {
+            System.out.println("Token使用: " + response.getUsage().getTotalTokens());
+        }
+        
+        return response;
     }
 }
 ```
@@ -126,10 +134,29 @@ curl -X POST http://localhost:8080/api/claude/compare \
 
 - ✅ 支持 Claude 3 全系列模型
 - ✅ 支持 system prompt
+- ✅ 完整的 Token 使用统计（v1.0.9+）
+- ✅ 返回模型提供商和版本信息（v1.0.9+）
 - ✅ 自动参数校验
 - ✅ 统一的异常处理
 - ✅ 详细的日志输出
 - ✅ 符合框架规范
+
+## 📊 v1.0.9 新增功能
+
+### Token 统计
+```java
+ModelResponseVO response = claudeService.httpChat(request);
+TokenUsageVO usage = response.getUsage();
+System.out.println("输入Token: " + usage.getPromptTokens());
+System.out.println("输出Token: " + usage.getCompletionTokens());
+System.out.println("总Token: " + usage.getTotalTokens());
+```
+
+### 模型信息
+```java
+System.out.println("提供商: " + response.getModelProvider());  // claude
+System.out.println("模型版本: " + response.getModelName());     // claude-3-opus-20240229
+```
 
 ## 📚 Claude API 文档
 

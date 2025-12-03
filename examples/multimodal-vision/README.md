@@ -147,6 +147,26 @@ curl -X POST http://localhost:8080/api/vision/analyze-product \
 | qwen-vl-max | 图片 + 文本 | 效果最好 | 专业图片分析 |
 | qwen3-vl-plus | 图片 + 视频 + 文本 | 支持视频、思考模式 | 复杂场景分析 |
 
+## 📊 Token 统计与成本分析（v1.0.9+）
+
+```java
+// 获取 Token 使用统计
+ModelResponseVO response = aiService.httpChat(request);
+TokenUsageVO usage = response.getUsage();
+
+System.out.println("输入Token: " + usage.getInputTokens());      // QWen特有字段
+System.out.println("输出Token: " + usage.getOutputTokens());     // QWen特有字段
+System.out.println("总Token: " + usage.getTotalTokens());
+
+// 模型信息
+System.out.println("提供商: " + response.getModelProvider());    // qWen
+System.out.println("模型版本: " + response.getModelName());      // qwen-vl-plus
+
+// 成本估算
+double cost = (usage.getInputTokens() * 0.0001) + (usage.getOutputTokens() * 0.0002);
+System.out.println("预估成本: ¥" + cost);
+```
+
 ## 💡 最佳实践
 
 ### 1. 图片要求

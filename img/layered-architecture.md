@@ -16,6 +16,8 @@ graph TB
         S2["SparkService"]
         S3["ChatGPTService"]
         S4["DeepSeekService"]
+        S5["DouBaoService"]
+        S6["QWenVLService"]
     end
     
     subgraph "工具层 Utility Layer"
@@ -41,6 +43,8 @@ graph TB
     B2 --> S2
     B2 --> S3
     B2 --> S4
+    B2 --> S5
+    B2 --> S6
     S1 --> U1
     S1 --> U2
     S1 --> U3
@@ -48,6 +52,8 @@ graph TB
     S2 --> U1
     S3 --> U1
     S4 --> U1
+    S5 --> U1
+    S6 --> U1
     C1 --> C2
     U1 --> E1
     U2 --> E1
