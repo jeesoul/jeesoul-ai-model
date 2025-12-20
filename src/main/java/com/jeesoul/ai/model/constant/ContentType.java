@@ -12,38 +12,50 @@ public enum ContentType {
      * 文本内容
      */
     TEXT("text"),
-    
+
     /**
      * 图片URL
      */
     IMAGE_URL("image_url"),
-    
+
     /**
      * Base64编码的图片
      */
     IMAGE_BASE64("image_base64"),
-    
+
     /**
      * 视频URL
      */
     VIDEO_URL("video_url"),
-    
+
     /**
      * 音频URL
      */
     AUDIO_URL("audio_url"),
-    
+
     /**
      * 文件URL
      */
     FILE_URL("file_url");
-
+    /**
+     * value 值
+     */
     private final String value;
 
+    /**
+     * 构造
+     *
+     * @param value
+     */
     ContentType(String value) {
         this.value = value;
     }
 
+    /**
+     * 获取value
+     *
+     * @return String
+     */
     public String getValue() {
         return value;
     }
