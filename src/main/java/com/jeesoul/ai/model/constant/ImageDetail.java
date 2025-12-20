@@ -13,25 +13,37 @@ public enum ImageDetail {
      * 模型自动决定使用低分辨率还是高分辨率
      */
     AUTO("auto"),
-    
+
     /**
      * 低分辨率
      * 处理速度快，成本低，适合简单识别任务
      */
     LOW("low"),
-    
+
     /**
      * 高分辨率
      * 处理详细，效果好，但速度慢且成本高
      */
     HIGH("high");
-
+    /**
+     * value
+     */
     private final String value;
 
+    /**
+     * 构造
+     *
+     * @param value 值
+     */
     ImageDetail(String value) {
         this.value = value;
     }
 
+    /**
+     * 获取value
+     *
+     * @return String
+     */
     public String getValue() {
         return value;
     }
@@ -51,7 +63,7 @@ public enum ImageDetail {
                 return detail;
             }
         }
-        throw new IllegalArgumentException("不支持的图片详细度: " + value + 
-                "，支持的值: auto, low, high");
+        throw new IllegalArgumentException("不支持的图片详细度: " + value
+                    + "，支持的值: auto, low, high");
     }
 }
