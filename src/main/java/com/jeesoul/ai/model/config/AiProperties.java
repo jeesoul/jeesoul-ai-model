@@ -41,7 +41,7 @@ public class AiProperties {
      * 讯飞星火服务配置属性
      */
     @Data
-    public static class SparkProperties {
+    public static class SparkProperties implements ModelConfig {
         /**
          * API 密钥
          */
@@ -77,7 +77,7 @@ public class AiProperties {
      * 通义千问服务配置属性
      */
     @Data
-    public static class QWenProperties {
+    public static class QWenProperties implements ModelConfig {
         /**
          * API 密钥
          */
@@ -113,7 +113,7 @@ public class AiProperties {
      * DeepSeek服务配置属性
      */
     @Data
-    public static class DeepSeekProperties {
+    public static class DeepSeekProperties implements ModelConfig {
         /**
          * API 密钥
          */
@@ -149,7 +149,7 @@ public class AiProperties {
      * ChatGPT服务配置属性
      */
     @Data
-    public static class ChatGPTProperties {
+    public static class ChatGPTProperties implements ModelConfig {
         /**
          * API 密钥
          */
@@ -185,7 +185,7 @@ public class AiProperties {
      * 通义千问视觉理解服务配置属性
      */
     @Data
-    public static class QWenVLProperties {
+    public static class QWenVLProperties implements ModelConfig {
         /**
          * API 密钥
          */
@@ -221,7 +221,7 @@ public class AiProperties {
      * 豆包（火山方舟）服务配置属性
      */
     @Data
-    public static class DouBaoProperties {
+    public static class DouBaoProperties implements ModelConfig {
         /**
          * API 密钥
          */

@@ -2,9 +2,6 @@ package com.jeesoul.ai.model.config;
 
 import com.jeesoul.ai.model.service.AiService;
 import com.jeesoul.ai.model.service.QWenVLService;
-import com.jeesoul.ai.model.util.HttpUtils;
-import com.jeesoul.ai.model.util.StreamHttpUtils;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,12 +12,9 @@ import org.springframework.context.annotation.Configuration;
  * @author dxy
  * @date 2025-10-18
  */
-@RequiredArgsConstructor
 @Configuration
 @ConditionalOnProperty(prefix = "ai.qwen-vl", name = "api-key")
 public class QWenVLAutoConfiguration {
-    private final HttpUtils aiHttpUtils;
-    private final StreamHttpUtils streamHttpUtils;
 
     /**
      * 创建并配置千问视觉理解大模型服务实例
@@ -30,6 +24,6 @@ public class QWenVLAutoConfiguration {
      */
     @Bean
     public AiService qWenVLService(AiProperties properties) {
-        return new QWenVLService(properties, aiHttpUtils, streamHttpUtils);
+        return new QWenVLService(properties.getQwenVL());
     }
 }

@@ -1,12 +1,9 @@
 package com.jeesoul.ai.model.service;
 
-import com.jeesoul.ai.model.config.AiProperties;
+import com.jeesoul.ai.model.config.ModelConfig;
 import com.jeesoul.ai.model.constant.AiRole;
-import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.JsonUtils;
-import com.jeesoul.ai.model.util.StreamHttpUtils;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -20,20 +17,23 @@ import java.util.Map;
  * @date 2025-10-18
  */
 @Slf4j
-@RequiredArgsConstructor
 public abstract class AbstractAiService implements AiService {
     /**
-     * AI配置信息
+     * 模型配置接口
+     * 支持自定义模型独立管理配置，无需修改 AiProperties
      */
-    protected final AiProperties aiProperties;
+    protected final ModelConfig modelConfig;
+
     /**
-     * HTTP工具类实例
+     * 构造函数（推荐使用）
+     * 使用 ModelConfig 接口，支持自定义模型独立管理配置
+     * HttpUtils 和 StreamHttpUtils 已改为静态工具类，无需注入
+     *
+     * @param modelConfig 模型配置接口
      */
-    protected final HttpUtils aiHttpUtils;
-    /**
-     * 流式HTTP工具类实例
-     */
-    protected final StreamHttpUtils streamHttpUtils;
+    public AbstractAiService(ModelConfig modelConfig) {
+        this.modelConfig = modelConfig;
+    }
 
     /**
      * 获取当前服务的模型名称
@@ -134,37 +134,6 @@ public abstract class AbstractAiService implements AiService {
     }
 
     /**
-     * 创建消息对象的通用方法
-     * 子类可以通过 lambda 传入具体的消息构建逻辑
-     *
-     * @param role    角色
-     * @param content 内容
-     * @param creator 消息创建函数
-     * @param <T>     消息类型
-     * @return 创建的消息对象
-     */
-    protected <T> T createMessage(AiRole role, String content, MessageCreator<T> creator) {
-        return creator.create(role, content);
-    }
-
-    /**
-     * 消息创建器接口
-     *
-     * @param <T> 消息类型
-     */
-    @FunctionalInterface
-    protected interface MessageCreator<T> {
-        /**
-         * 创建消息
-         *
-         * @param role    角色
-         * @param content 内容
-         * @return 消息对象
-         */
-        T create(AiRole role, String content);
-    }
-
-    /**
      * 截断响应内容用于日志打印
      * 避免日志内容过长
      *
@@ -198,49 +167,58 @@ public abstract class AbstractAiService implements AiService {
      * 获取温度参数，优先使用请求参数，如果请求参数为空则使用配置参数
      *
      * @param request           请求参数
-     * @param configTemperature 配置中的温度值
+     * @param configTemperature 配置中的温度值（可选，如果为null则从modelConfig获取）
      * @return 温度值
      */
     protected Double getTemperature(ModelRequestVO request, Double configTemperature) {
         if (request.getTemperature() != null) {
             return request.getTemperature();
         }
-        return configTemperature;
+        if (configTemperature != null) {
+            return configTemperature;
+        }
+        return modelConfig != null ? modelConfig.getTemperature() : null;
     }
 
     /**
      * 获取topP参数，优先使用请求参数，如果请求参数为空则使用配置参数
      *
-     * @param request     请求参数
-     * @param configTopP  配置中的topP值
+     * @param request    请求参数
+     * @param configTopP 配置中的topP值（可选，如果为null则从modelConfig获取）
      * @return topP值
      */
     protected Double getTopP(ModelRequestVO request, Double configTopP) {
         if (request.getTopP() != null) {
             return request.getTopP();
         }
-        return configTopP;
+        if (configTopP != null) {
+            return configTopP;
+        }
+        return modelConfig != null ? modelConfig.getTopP() : null;
     }
 
     /**
      * 获取最大token数，优先使用请求参数，如果请求参数为空则使用配置参数
      *
      * @param request         请求参数
-     * @param configMaxTokens 配置中的最大token数
+     * @param configMaxTokens 配置中的最大token数（可选，如果为null则从modelConfig获取）
      * @return 最大token数
      */
     protected Integer getMaxTokens(ModelRequestVO request, Integer configMaxTokens) {
         if (request.getMaxTokens() != null) {
             return request.getMaxTokens();
         }
-        return configMaxTokens;
+        if (configMaxTokens != null) {
+            return configMaxTokens;
+        }
+        return modelConfig != null ? modelConfig.getMaxTokens() : null;
     }
 
     /**
      * 获取模型名称，优先使用请求参数，如果请求参数为空则使用配置参数
      *
      * @param request     请求参数
-     * @param configModel 配置中的模型名称
+     * @param configModel 配置中的模型名称（可选，如果为null则从modelConfig获取）
      * @return 模型名称
      * @throws IllegalArgumentException 如果请求参数和配置中都没有模型名称时抛出
      */
@@ -248,12 +226,71 @@ public abstract class AbstractAiService implements AiService {
         String model = null;
         if (StringUtils.isNotBlank(request.getModel())) {
             model = request.getModel();
-        } else {
+        } else if (StringUtils.isNotBlank(configModel)) {
             model = configModel;
+        } else if (modelConfig != null && StringUtils.isNotBlank(modelConfig.getModel())) {
+            model = modelConfig.getModel();
         }
         if (StringUtils.isBlank(model)) {
             throw new IllegalArgumentException("模型版本(model)不能为空，请在请求参数或配置文件中设置");
         }
         return model;
+    }
+
+    /**
+     * 获取API密钥
+     *
+     * @return API密钥
+     * @throws IllegalStateException 如果配置中未设置API密钥
+     */
+    protected String getApiKey() {
+        if (modelConfig != null && StringUtils.isNotBlank(modelConfig.getApiKey())) {
+            return modelConfig.getApiKey();
+        }
+        throw new IllegalStateException("API密钥未配置，请在配置文件中设置 api-key");
+    }
+
+    /**
+     * 获取服务端点
+     *
+     * @return 服务端点URL
+     * @throws IllegalStateException 如果配置中未设置服务端点
+     */
+    protected String getEndpoint() {
+        if (modelConfig != null && StringUtils.isNotBlank(modelConfig.getEndpoint())) {
+            return modelConfig.getEndpoint();
+        }
+        throw new IllegalStateException("服务端点未配置，请在配置文件中设置 endpoint");
+    }
+
+    /**
+     * 创建消息对象的通用方法
+     * 子类可以通过 lambda 传入具体的消息构建逻辑
+     *
+     * @param role    角色
+     * @param content 内容
+     * @param creator 消息创建函数
+     * @param <T>     消息类型
+     * @return 创建的消息对象
+     */
+    protected <T> T createMessage(AiRole role, String content, MessageCreator<T> creator) {
+        return creator.create(role, content);
+    }
+
+    /**
+     * 消息创建器接口
+     *
+     * @param <T> 消息类型
+     */
+    @FunctionalInterface
+    protected interface MessageCreator<T> {
+        /**
+         * 创建消息
+         *
+         * @param role    角色
+         * @param content 内容
+         * @return 消息对象
+         */
+        T create(AiRole role, String content);
     }
 }

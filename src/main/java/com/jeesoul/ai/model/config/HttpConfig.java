@@ -1,51 +1,26 @@
 package com.jeesoul.ai.model.config;
 
-import com.jeesoul.ai.model.util.HttpUtils;
-import com.jeesoul.ai.model.util.StreamHttpUtils;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * HTTP 相关配置类
- * 提供HTTP工具类的Bean配置，包括：
- * 1. 普通HTTP请求工具类（HttpUtils）
- * 2. 流式HTTP请求工具类（StreamHttpUtils）
- * 这些工具类用于处理与AI服务的HTTP通信，支持同步和流式响应
+ * HTTP 相关配置类（已废弃）
+ * HttpUtils 和 StreamHttpUtils 已改为静态工具类，无需通过 Bean 注入
+ * 保留此类仅用于向后兼容，新代码无需使用
+ * 
+ * 注意：HttpUtils 和 StreamHttpUtils 已改为静态工具类，请直接使用静态方法调用：
+ * - HttpUtils.post(...)
+ * - HttpUtils.postRaw(...)
+ * - StreamHttpUtils.postStream(...)
+ * - StreamHttpUtils.postStreamRaw(...)
  *
  * @author dxy
  * @date 2025-06-10
+ * @deprecated HttpUtils 和 StreamHttpUtils 已改为静态工具类，请直接使用静态方法调用
+ *             此类已不再需要，保留仅为向后兼容
  */
+@Deprecated
 @Configuration
 public class HttpConfig {
-
-    /**
-     * 配置普通HTTP请求工具类Bean
-     * 用于处理同步HTTP请求，如普通的API调用
-     * 支持：
-     * 1. 请求/响应拦截
-     * 2. 错误处理
-     * 3. JSON序列化/反序列化
-     *
-     * @return HttpUtils实例
-     */
-    @Bean
-    public HttpUtils httpUtils() {
-        return new HttpUtils();
-    }
-
-    /**
-     * 配置流式HTTP请求工具类Bean
-     * 用于处理流式HTTP请求，如SSE（Server-Sent Events）响应
-     * 支持：
-     * 1. 流式数据处理
-     * 2. 超时控制
-     * 3. 自定义响应处理
-     * 4. 错误处理
-     *
-     * @return StreamHttpUtils实例
-     */
-    @Bean
-    public StreamHttpUtils kyqbStreamHttpUtils() {
-        return new StreamHttpUtils();
-    }
+    // HttpUtils 和 StreamHttpUtils 已改为静态工具类，无需 Bean 配置
+    // 请直接使用静态方法调用
 }

@@ -2,9 +2,6 @@ package com.jeesoul.ai.model.config;
 
 import com.jeesoul.ai.model.service.AiService;
 import com.jeesoul.ai.model.service.ChatGPTService;
-import com.jeesoul.ai.model.util.HttpUtils;
-import com.jeesoul.ai.model.util.StreamHttpUtils;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,13 +14,9 @@ import org.springframework.context.annotation.Configuration;
  * @author dxy
  * @date 2025-06-10
  */
-@RequiredArgsConstructor
 @Configuration
 @ConditionalOnProperty(prefix = "ai.chat-gpt", name = "api-key")
 public class ChatGPTAutoConfiguration {
-
-    private final HttpUtils httpUtils;
-    private final StreamHttpUtils streamHttpUtils;
 
     /**
      * 创建并配置ChatGPT大模型服务实例
@@ -33,6 +26,6 @@ public class ChatGPTAutoConfiguration {
      */
     @Bean("chatGPTService")
     public AiService chatGPTService(AiProperties properties) {
-        return new ChatGPTService(properties, httpUtils, streamHttpUtils);
+        return new ChatGPTService(properties.getChatGpt());
     }
 }

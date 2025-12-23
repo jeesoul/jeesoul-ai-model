@@ -21,12 +21,13 @@ import java.util.function.Consumer;
 /**
  * 流式HTTP请求工具类
  * 用于处理与LLM服务相关的流式HTTP请求，支持Server-Sent Events (SSE)
+ * 静态工具类，所有方法均为静态方法，无需实例化
  *
  * @author dxy
  * @date 2025-06-10
  */
 @Slf4j
-public class StreamHttpUtils {
+public final class StreamHttpUtils {
     /**
      * 默认的HTTP请求头
      */
@@ -40,6 +41,13 @@ public class StreamHttpUtils {
     }
 
     /**
+     * 私有构造函数，防止实例化
+     */
+    private StreamHttpUtils() {
+        throw new UnsupportedOperationException("工具类不允许实例化");
+    }
+
+    /**
      * 发送流式POST请求
      *
      * @param <T>    请求体类型，用于指定请求数据的类型
@@ -49,7 +57,7 @@ public class StreamHttpUtils {
      * @param config 请求配置
      * @return 响应数据流
      */
-    public <T, R> Flux<R> postStream(String url, T body, StreamHttpConfig<T, R> config) {
+    public static <T, R> Flux<R> postStream(String url, T body, StreamHttpConfig<T, R> config) {
         try {
             // 创建WebClient
             WebClient webClient = WebClient.builder()
@@ -133,7 +141,7 @@ public class StreamHttpUtils {
      * @param config 流式HTTP配置
      * @return 原始响应数据流（JSON字符串）
      */
-    public <T> Flux<String> postStreamRaw(String url, T body, StreamHttpConfig<T, String> config) {
+    public static <T> Flux<String> postStreamRaw(String url, T body, StreamHttpConfig<T, String> config) {
         // 创建WebClient
         WebClient webClient = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
