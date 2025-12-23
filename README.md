@@ -298,126 +298,18 @@ ModelResponseVO response = myService.httpChat(request);
 
 ### 方式二：完全自定义实现
 
-如果需要完全自定义实现，可以继承 `AbstractAiService`：
+如果需要完全自定义实现，可以继承 `AbstractAiService`。详细示例请参考：📖 [Claude AI 集成示例](examples/claude-integration/README.md)
 
-```java
-@Slf4j
-@AiModelService(
-    modelName = "claude",
-    serviceName = "claudeService",
-    description = "Anthropic Claude AI 模型"
-)
-public class ClaudeService extends AbstractAiService {
-    
-    /**
-     * 构造函数（推荐使用）
-     * v1.0.9-GA：只需传入 ModelConfig，工具类已静态化
-     */
-    public ClaudeService(ClaudeModelProperties modelConfig) {
-        super(modelConfig);
-    }
-    
-    /**
-     * 构造函数（向后兼容，已废弃）
-     * @deprecated 请使用 {@link #ClaudeService(ModelConfig)} 替代
-     */
-    @Deprecated
-    public ClaudeService(AiProperties aiProperties, 
-                        HttpUtils aiHttpUtils, 
-                        StreamHttpUtils streamHttpUtils) {
-        super(aiProperties.getClaude(), aiHttpUtils, streamHttpUtils);
-    }
-
-    @Override
-    protected String getModelName() {
-        return "claude";
-    }
-
-    @Override
-    protected boolean supportSystemPrompt() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportThinking() {
-        return false;
-    }
-
-    @Override
-    protected String getModelName() {
-        return "claude";
-    }
-
-    @Override
-    protected boolean supportSystemPrompt() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportThinking() {
-        return false;
-    }
-
-    @Override
-    public ModelResponseVO httpChat(ModelRequestVO request) throws AiException {
-        validateRequest(request);
-        warnUnsupportedFeatures(request);
-        
-        // 使用静态工具类（v1.0.9-GA）
-        HttpUtils.HttpConfig config = HttpUtils.HttpConfig.builder()
-            .apiKey(getApiKey())
-            .build();
-        
-        // 实现你的调用逻辑
-        // ...
-    }
-
-    @Override
-    public Flux<ModelResponseVO> streamChat(ModelRequestVO request) {
-        // 使用静态工具类（v1.0.9-GA）
-        StreamHttpUtils.StreamHttpConfig<YourRequest, ResultContent> config = 
-            StreamHttpUtils.StreamHttpConfig.builder()
-                .apiKey(getApiKey())
-                .build();
-        
-        // 实现流式对话
-        // ...
-    }
-
-    @Override
-    public Flux<String> streamChatStr(ModelRequestVO request) {
-        return streamChat(request).map(ModelResponseVO::getResult);
-    }
-}
-```
-
-### 方式二：手动注册
+### 方式三：手动注册
 
 ```java
 @Component
 public class CustomModelRegistrar {
-    
     @PostConstruct
     public void registerModels() {
         AiStrategyContext.registerModel("claude", "claudeService");
-        AiStrategyContext.registerModel("gemini", "geminiService");
-        log.info("自定义模型注册完成");
     }
 }
-```
-
-### 使用自定义模型
-
-```java
-// 直接使用模型名称创建服务
-AiService claudeService = FactoryModelService.create("claude");
-
-ModelRequestVO request = new ModelRequestVO()
-    .setModelName("claude")
-    .setModel("claude-3-opus-20240229")
-    .setPrompt("Hello Claude!");
-
-ModelResponseVO response = claudeService.httpChat(request);
 ```
 
 ## 📋 API 文档
@@ -528,43 +420,14 @@ src/main/java/com/jeesoul/ai/model/
 
 ### 架构改进（v1.0.9-GA）
 
-#### ModelConfig 接口设计
-- ✅ 引入 `ModelConfig` 接口，解耦配置与实现
-- ✅ 新增 `BaseModelConfig` 抽象类，提供通用配置属性
-- ✅ 所有内置模型的 `*Properties` 类实现 `ModelConfig` 接口
-- ✅ 解决扩展性问题：扩展自定义模型无需修改 `AiProperties.java`
+- ✅ **ModelConfig 接口**：解耦配置与实现，扩展自定义模型无需修改框架代码
+- ✅ **HTTP 工具类静态化**：`HttpUtils` 和 `StreamHttpUtils` 改为静态方法，简化依赖注入
 
-#### HTTP 工具类静态化
-- ✅ `HttpUtils` 和 `StreamHttpUtils` 改为静态工具类
-- ✅ 添加私有构造函数，防止实例化
-- ✅ 简化依赖注入，提升性能
-- ✅ 自定义模型无需注入工具类
-
-**使用对比：**
-```java
-// v1.0.8 - 需要注入工具类
-public MyService(AiProperties aiProperties, HttpUtils aiHttpUtils, StreamHttpUtils streamHttpUtils) {
-    super(aiProperties.getSpark(), aiHttpUtils, streamHttpUtils);
-    // 使用：aiHttpUtils.post(...)
-}
-
-// v1.0.9-GA - 只需配置
-public MyService(MyModelProperties modelConfig) {
-    super(modelConfig);
-    // 使用：HttpUtils.post(...) - 静态调用
-}
-```
+详细说明见：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
 
 ## 🔄 版本升级
 
-**v1.0.9-GA 完全向后兼容** v1.0.8，现有代码无需修改即可升级。
-
-**主要改进：**
-- 🏗️ **架构重构**：ModelConfig 接口、工具类静态化
-- ✨ **功能增强**：豆包模型、Token 统计、思考模式
-- 🚀 **性能优化**：减少对象创建、简化依赖注入
-
-**详细升级指南：** 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
+**v1.0.9-GA 完全向后兼容** v1.0.9，现有代码无需修改即可升级。详细升级指南：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
 
 ## ⚠️ 注意事项
 
@@ -574,55 +437,20 @@ public MyService(MyModelProperties modelConfig) {
 - 🖼️ **图片大小** - 建议 < 10MB，Base64 < 5MB
 - ⏱️ **响应时间** - 视频分析和思考模式建议异步处理
 
-## 🐛 故障排查
-
-**常见问题：** 📖 [FAQ 常见问题](docs/faq.md)（待补充）
-
-**快速检查：**
-- ✅ 配置项使用中划线：`api-key` 而非 `apiKey`
-- ✅ 流式调用必须调用 `subscribe()`
-- ✅ 检查日志中的警告信息
-- ✅ 确保模型支持所需功能
-
 ## ❓ 常见问题
 
-**详细 FAQ：** 📖 [常见问题文档](docs/faq.md)（待补充）
+**详细 FAQ：** 📖 [FAQ 常见问题](docs/faq.md)（待补充）
 
 **快速参考：**
+- **配置项**：使用中划线 `api-key` 而非 `apiKey`
+- **流式调用**：必须调用 `subscribe()`
 - **模型选择**：代码生成→DeepSeek，通用对话→QWen/ChatGPT，图片分析→QWenVL
 - **思考模式**：`thinking`(Boolean) 标识是否思考，`thinkingContent`(String) 存储思考内容
 - **Token统计**：豆包流式接口不支持，使用同步接口
-- **流式输出**：使用 `streamChatStr()` 获取纯文本，或 `streamChat()` 获取完整信息
 
 ## 📝 更新日志
 
 **完整更新日志：** 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
-
-### v1.0.9-GA（最新版本）
-
-**🏗️ 架构重构**
-- ModelConfig 接口解耦配置
-- HTTP 工具类静态化
-- 自定义模型扩展零侵入
-
-**✨ 新增功能**
-- 豆包(DouBao)模型支持
-- Token 统计功能
-- 完整的思考模式支持
-
-**🚀 性能优化**
-- 减少对象创建
-- 简化依赖注入
-- 提升扩展性能
-
-## 💡 使用示例
-
-**完整示例：** 📖 [使用示例文档](docs/examples.md)（待补充）
-
-**快速示例：**
-- 📖 [Claude AI 集成示例](examples/claude-integration/README.md) - 自定义模型集成
-- 📖 [多模态视觉示例](examples/multimodal-vision/README.md) - 图片/视频分析
-- 📖 [Claude AI 集成示例](examples/claude-integration/README.md) - 自定义模型扩展完整示例
 
 ## 📚 文档导航
 
@@ -632,9 +460,8 @@ public MyService(MyModelProperties modelConfig) {
 - 📖 [扩展自定义模型](#-扩展自定义模型) - 零侵入扩展
 
 ### 示例文档
-- 📖 [Claude AI 集成示例](examples/claude-integration/README.md) - 自定义模型集成
-- 📖 [多模态视觉示例](examples/multimodal-vision/README.md) - 图片/视频分析
 - 📖 [Claude AI 集成示例](examples/claude-integration/README.md) - 自定义模型扩展完整示例
+- 📖 [多模态视觉示例](examples/multimodal-vision/README.md) - 图片/视频分析
 
 ### 参考文档
 - 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md) - 版本更新日志
