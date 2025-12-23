@@ -2,9 +2,6 @@ package com.jeesoul.ai.model.config;
 
 import com.jeesoul.ai.model.service.AiService;
 import com.jeesoul.ai.model.service.DouBaoService;
-import com.jeesoul.ai.model.util.HttpUtils;
-import com.jeesoul.ai.model.util.StreamHttpUtils;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,13 +14,9 @@ import org.springframework.context.annotation.Configuration;
  * @author dxy
  * @date 2025-12-03
  */
-@RequiredArgsConstructor
 @Configuration
 @ConditionalOnProperty(prefix = "ai.doubao", name = "api-key")
 public class DouBaoAutoConfiguration {
-
-    private final HttpUtils httpUtils;
-    private final StreamHttpUtils streamHttpUtils;
 
     /**
      * 创建并配置豆包大模型服务实例
@@ -33,7 +26,7 @@ public class DouBaoAutoConfiguration {
      */
     @Bean
     public AiService douBaoService(AiProperties properties) {
-        return new DouBaoService(properties, httpUtils, streamHttpUtils);
+        return new DouBaoService(properties.getDouBao());
     }
 }
 

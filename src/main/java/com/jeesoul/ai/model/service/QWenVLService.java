@@ -1,6 +1,7 @@
 package com.jeesoul.ai.model.service;
 
 import com.jeesoul.ai.model.config.AiProperties;
+import com.jeesoul.ai.model.config.ModelConfig;
 import com.jeesoul.ai.model.constant.AiModel;
 import com.jeesoul.ai.model.constant.AiRole;
 import com.jeesoul.ai.model.constant.ContentType;
@@ -21,7 +22,11 @@ import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 千问视觉理解模型服务实现
@@ -33,8 +38,23 @@ import java.util.*;
 @Slf4j
 public class QWenVLService extends AbstractAiService {
 
+    /**
+     * 构造函数（推荐使用）
+     *
+     * @param modelConfig 模型配置
+     */
+    public QWenVLService(ModelConfig modelConfig) {
+        super(modelConfig);
+    }
+
+    /**
+     * 构造函数（向后兼容 - 支持 AiProperties + 工具类注入）
+     * 请使用 {@link #QWenVLService(ModelConfig)} 替代
+     * HttpUtils和StreamHttpUtils 已改为静态工具类，无需注入，工具类参数将被忽略
+     */
+    @Deprecated
     public QWenVLService(AiProperties aiProperties, HttpUtils aiHttpUtils, StreamHttpUtils streamHttpUtils) {
-        super(aiProperties, aiHttpUtils, streamHttpUtils);
+        super(aiProperties.getQwenVL());
     }
 
     @Override
@@ -64,26 +84,26 @@ public class QWenVLService extends AbstractAiService {
             HttpQWenChatResponse response = sendHttpRequest(chatRequest);
 
             if (CollectionUtils.isEmpty(response.getChoices())) {
-                return ModelResponseVO.of("", AiModel.QWEN_VL.getModelName(), 
-                        chatRequest.getModel());
+                return ModelResponseVO.of("", AiModel.QWEN_VL.getModelName(),
+                            chatRequest.getModel());
             }
-            
+
             HttpBaseChatResponse.BaseChoice.Message message = response.getChoices().get(0).getMessage();
             String result = message.getContent();
-            
+
             // 提取usage信息
             TokenUsageVO usage = extractUsage(response);
-            
+
             // 提取思考内容（reasoning_content）
             String thinkingContent = message.getReasoningContent();
-            
+
             // 返回完整的响应信息
             return ModelResponseVO.of(
-                    result,
-                    thinkingContent,
-                    AiModel.QWEN_VL.getModelName(),
-                    chatRequest.getModel(),
-                    usage
+                        result,
+                        thinkingContent,
+                        AiModel.QWEN_VL.getModelName(),
+                        chatRequest.getModel(),
+                        usage
             );
         } catch (Exception e) {
             log.error("[QWenVL] 调用失败: {}", e.getMessage(), e);
@@ -94,34 +114,34 @@ public class QWenVLService extends AbstractAiService {
     @Override
     public Flux<ModelResponseVO> streamChat(ModelRequestVO request) throws AiException {
         // 获取实际使用的模型版本
-        String actualModel = getModel(request, aiProperties.getQwenVL().getModel());
-        
+        String actualModel = getModel(request, modelConfig.getModel());
+
         return sendStreamRequest(request)
-                .filter(content -> {
-                    // 过滤掉content为空的chunk（但保留只有usage的chunk）
-                    String text = content.getContent();
-                    return (text != null && !text.isEmpty()) || content.getUsage() != null;
-                })
-                .map(content -> {
-                    // 构建完整的响应对象，包含usage信息（如果有）
-                    return ModelResponseVO.of(
-                            content.getContent(),  // content字段已包含thinking或正常内容
-                            content.getThinkingContent(),
-                            AiModel.QWEN_VL.getModelName(),
-                            actualModel,
-                            content.getUsage()  // 只有最后一个chunk有usage
-                    );
-                });
+                    .filter(content -> {
+                        // 过滤掉content为空的chunk（但保留只有usage的chunk）
+                        String text = content.getContent();
+                        return (text != null && !text.isEmpty()) || content.getUsage() != null;
+                    })
+                    .map(content -> {
+                        // 构建完整的响应对象，包含usage信息（如果有）
+                        return ModelResponseVO.of(
+                                    content.getContent(),
+                                    content.getThinkingContent(),
+                                    AiModel.QWEN_VL.getModelName(),
+                                    actualModel,
+                                    content.getUsage()
+                        );
+                    });
     }
 
     @Override
     public Flux<String> streamChatStr(ModelRequestVO request) throws AiException {
         return sendStreamRequest(request)
-                .filter(content -> {
-                    String text = content.getContent();
-                    return text != null && !text.isEmpty();  // 过滤掉null和空字符串
-                })
-                .map(ResultContent::getContent);
+                    .filter(content -> {
+                        String text = content.getContent();
+                        return text != null && !text.isEmpty();
+                    })
+                    .map(ResultContent::getContent);
     }
 
     @Override
@@ -135,11 +155,11 @@ public class QWenVLService extends AbstractAiService {
             HttpQWenVLChatRequest chatRequest = buildChatRequest(request, false);
             logRequestParams(chatRequest);
             HttpUtils.HttpConfig config = createHttpConfig();
-            return aiHttpUtils.postRaw(
-                    aiProperties.getQwenVL().getEndpoint(),
-                    new HashMap<>(),
-                    chatRequest,
-                    config
+            return HttpUtils.postRaw(
+                        getEndpoint(),
+                        new HashMap<>(),
+                        chatRequest,
+                        config
             );
         } catch (Exception e) {
             log.error("[QWenVL] 调用失败: {}", e.getMessage(), e);
@@ -157,14 +177,14 @@ public class QWenVLService extends AbstractAiService {
         HttpQWenVLChatRequest chatRequest = buildChatRequest(request, true);
         logRequestParams(chatRequest);
         StreamHttpUtils.StreamHttpConfig<HttpQWenVLChatRequest, String> config = StreamHttpUtils.StreamHttpConfig
-                .<HttpQWenVLChatRequest, String>builder()
-                .apiKey(aiProperties.getQwenVL().getApiKey())
-                .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
-                .build();
-        return streamHttpUtils.postStreamRaw(
-                aiProperties.getQwenVL().getEndpoint(),
-                chatRequest,
-                config
+                    .<HttpQWenVLChatRequest, String>builder()
+                    .apiKey(getApiKey())
+                    .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
+                    .build();
+        return StreamHttpUtils.postStreamRaw(
+                    getEndpoint(),
+                    chatRequest,
+                    config
         );
     }
 
@@ -177,7 +197,7 @@ public class QWenVLService extends AbstractAiService {
      */
     private HttpQWenVLChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpQWenVLChatRequest chatRequest = new HttpQWenVLChatRequest();
-        
+
         // 设置思考模式
         if (request.isEnableThinking()) {
             chatRequest.setEnableThinking(Boolean.TRUE);
@@ -190,14 +210,14 @@ public class QWenVLService extends AbstractAiService {
             chatThink.setEnableThinking(Boolean.FALSE);
             chatRequest.setChatTemplateKwargs(chatThink);
         }
-        
-        chatRequest.setModel(getModel(request, aiProperties.getQwenVL().getModel()));
+
+        chatRequest.setModel(getModel(request, modelConfig.getModel()));
         chatRequest.setMessages(buildMultiModalMessages(request));
         chatRequest.setStream(isStream);
-        chatRequest.setTemperature(getTemperature(request, aiProperties.getQwenVL().getTemperature()));
-        chatRequest.setTopP(getTopP(request, aiProperties.getQwenVL().getTopP()));
-        chatRequest.setMaxTokens(getMaxTokens(request, aiProperties.getQwenVL().getMaxTokens()));
-        
+        chatRequest.setTemperature(getTemperature(request, modelConfig.getTemperature()));
+        chatRequest.setTopP(getTopP(request, modelConfig.getTopP()));
+        chatRequest.setMaxTokens(getMaxTokens(request, modelConfig.getMaxTokens()));
+
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
         return chatRequest;
@@ -211,7 +231,7 @@ public class QWenVLService extends AbstractAiService {
      */
     private List<HttpQWenVLChatRequest.Message> buildMultiModalMessages(ModelRequestVO request) {
         List<HttpQWenVLChatRequest.Message> messages = new ArrayList<>();
-        
+
         // 如果设置了 systemPrompt，系统消息放在最前面
         if (request.getSystemPrompt() != null && !request.getSystemPrompt().isEmpty()) {
             HttpQWenVLChatRequest.Message systemMessage = new HttpQWenVLChatRequest.Message();
@@ -219,7 +239,7 @@ public class QWenVLService extends AbstractAiService {
             systemMessage.setContent(request.getSystemPrompt());
             messages.add(systemMessage);
         }
-        
+
         // 如果请求中提供了消息列表，添加消息列表（跳过其中的 system 消息，因为已经在最前面添加了）
         if (!CollectionUtils.isEmpty(request.getMessages())) {
             for (ModelRequestVO.Message voMessage : request.getMessages()) {
@@ -231,7 +251,7 @@ public class QWenVLService extends AbstractAiService {
             }
             return messages;
         }
-        
+
         // 否则使用原来的逻辑：contents 或 prompt
         HttpQWenVLChatRequest.Message message = new HttpQWenVLChatRequest.Message();
         message.setRole(AiRole.USER.getValue());
@@ -322,12 +342,12 @@ public class QWenVLService extends AbstractAiService {
     private HttpQWenChatResponse sendHttpRequest(HttpQWenVLChatRequest chatRequest) throws IOException {
         logRequestParams(chatRequest);
         HttpUtils.HttpConfig config = createHttpConfig();
-        return aiHttpUtils.post(
-                aiProperties.getQwenVL().getEndpoint(),
-                new HashMap<>(),
-                chatRequest,
-                HttpQWenChatResponse.class,
-                config
+        return HttpUtils.post(
+                    getEndpoint(),
+                    new HashMap<>(),
+                    chatRequest,
+                    HttpQWenChatResponse.class,
+                    config
         );
     }
 
@@ -347,10 +367,10 @@ public class QWenVLService extends AbstractAiService {
         logRequestParams(chatRequest);
         StreamHttpUtils.StreamHttpConfig<HttpQWenVLChatRequest, ResultContent> config = createStreamConfig();
 
-        return streamHttpUtils.postStream(
-                aiProperties.getQwenVL().getEndpoint(),
-                chatRequest,
-                config
+        return StreamHttpUtils.postStream(
+                    getEndpoint(),
+                    chatRequest,
+                    config
         );
     }
 
@@ -361,11 +381,11 @@ public class QWenVLService extends AbstractAiService {
      */
     private HttpUtils.HttpConfig createHttpConfig() {
         return HttpUtils.HttpConfig.builder()
-                .apiKey(aiProperties.getQwenVL().getApiKey())
-                .responseInterceptor(response ->
-                        log.debug("[QWenVL] 响应状态: {}, 响应内容: {}", 
-                                 response.getStatus(), truncateForLog(response.body(), 200)))
-                .build();
+                    .apiKey(getApiKey())
+                    .responseInterceptor(response ->
+                                log.debug("[QWenVL] 响应状态: {}, 响应内容: {}",
+                                            response.getStatus(), truncateForLog(response.body(), 200)))
+                    .build();
     }
 
     /**
@@ -375,10 +395,10 @@ public class QWenVLService extends AbstractAiService {
      */
     private StreamHttpUtils.StreamHttpConfig<HttpQWenVLChatRequest, ResultContent> createStreamConfig() {
         return StreamHttpUtils.StreamHttpConfig.<HttpQWenVLChatRequest, ResultContent>builder()
-                .apiKey(aiProperties.getQwenVL().getApiKey())
-                .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
-                .responseProcessor(new StreamQWenResponse())
-                .build();
+                    .apiKey(getApiKey())
+                    .requestInterceptor(r -> r.header("X-Request-ID", UUID.randomUUID().toString()))
+                    .responseProcessor(new StreamQWenResponse())
+                    .build();
     }
 
     /**
@@ -391,14 +411,14 @@ public class QWenVLService extends AbstractAiService {
         if (response == null || response.getUsage() == null) {
             return null;
         }
-        
+
         HttpBaseChatResponse.Usage usage = response.getUsage();
 
         // QWen VL使用标准的promptTokens和completionTokens字段
         return TokenUsageVO.of(
-                usage.getPromptTokens(),
-                usage.getCompletionTokens(),
-                usage.getTotalTokens()
+                    usage.getPromptTokens(),
+                    usage.getCompletionTokens(),
+                    usage.getTotalTokens()
         );
     }
 }

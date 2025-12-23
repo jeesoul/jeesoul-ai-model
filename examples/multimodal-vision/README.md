@@ -2,6 +2,8 @@
 
 本示例演示如何使用千问视觉模型（qwenVL）进行图片和视频分析。
 
+> **v1.0.9-GA 更新**：工具类已静态化，使用更简洁；Token 统计功能完善。
+
 ## 📋 文件说明
 
 - **`MultiModalExampleController.java`** - 多模态示例控制器（8个完整示例）
@@ -147,7 +149,7 @@ curl -X POST http://localhost:8080/api/vision/analyze-product \
 | qwen-vl-max | 图片 + 文本 | 效果最好 | 专业图片分析 |
 | qwen3-vl-plus | 图片 + 视频 + 文本 | 支持视频、思考模式 | 复杂场景分析 |
 
-## 📊 Token 统计与成本分析（v1.0.9+）
+## 📊 Token 统计与成本分析（v1.0.9-GA）
 
 ```java
 // 获取 Token 使用统计
@@ -158,7 +160,7 @@ System.out.println("输入Token: " + usage.getInputTokens());      // QWen特有
 System.out.println("输出Token: " + usage.getOutputTokens());     // QWen特有字段
 System.out.println("总Token: " + usage.getTotalTokens());
 
-// 模型信息
+// 模型信息（v1.0.9-GA）
 System.out.println("提供商: " + response.getModelProvider());    // qWen
 System.out.println("模型版本: " + response.getModelName());      // qwen-vl-plus
 
@@ -166,6 +168,11 @@ System.out.println("模型版本: " + response.getModelName());      // qwen-vl-
 double cost = (usage.getInputTokens() * 0.0001) + (usage.getOutputTokens() * 0.0002);
 System.out.println("预估成本: ¥" + cost);
 ```
+
+**v1.0.9-GA 改进：**
+- ✅ Token 统计更准确
+- ✅ 流式接口支持 Token 统计（最后一个 chunk）
+- ✅ 模型信息追踪更完善
 
 ## 💡 最佳实践
 
@@ -224,4 +231,18 @@ System.out.println("预估成本: ¥" + cost);
 ## 📚 相关文档
 
 - [主框架文档](../../README.md)
+- [版本更新日志](../../RELEASE_NOTES_v1.0.9.md) - v1.0.9-GA 架构改进说明
+- [Claude AI 集成示例](../claude-integration/README.md) - 自定义模型扩展完整示例（v1.0.9-GA）
 - [千问 VL 官方文档](https://help.aliyun.com/document_detail/2712265.html)
+
+## 🔄 v1.0.9-GA 更新说明
+
+**架构改进：**
+- ✅ HTTP 工具类静态化：`HttpUtils` 和 `StreamHttpUtils` 改为静态方法
+- ✅ ModelConfig 接口：解耦配置与实现，扩展更简单
+- ✅ FactoryModelService：支持自定义模型，无需修改枚举
+
+**使用变化：**
+- 工具类调用改为静态方法：`HttpUtils.post(...)` 而非 `httpUtils.post(...)`
+- 自定义模型扩展无需修改 `AiProperties.java`
+- 构造函数更简洁：只需传入 `ModelConfig`

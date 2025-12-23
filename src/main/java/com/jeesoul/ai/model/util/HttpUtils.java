@@ -15,12 +15,13 @@ import java.util.function.Consumer;
 
 /**
  * HTTP 请求工具类，用于处理与 LLM 服务相关的 HTTP 请求
+ * 静态工具类，所有方法均为静态方法，无需实例化
  *
  * @author dxy
  * @date 2025-06-10
  */
 @Slf4j
-public class HttpUtils {
+public final class HttpUtils {
     /**
      * 默认的 HTTP 请求头
      */
@@ -28,6 +29,13 @@ public class HttpUtils {
 
     static {
         DEFAULT_HEADERS.put("Content-Type", "application/json");
+    }
+
+    /**
+     * 私有构造函数，防止实例化
+     */
+    private HttpUtils() {
+        throw new UnsupportedOperationException("工具类不允许实例化");
     }
 
     /**
@@ -43,8 +51,8 @@ public class HttpUtils {
      * @return 响应对象
      * @throws IOException 当请求失败时抛出
      */
-    public <T, R extends HttpBaseResponse> R post(String url, Map<String, String> headers, T body,
-                                                  Class<R> responseType, HttpConfig config) throws IOException {
+    public static <T, R extends HttpBaseResponse> R post(String url, Map<String, String> headers, T body,
+                                                          Class<R> responseType, HttpConfig config) throws IOException {
         return request(url, Method.POST, headers, body, responseType, config);
     }
 
@@ -59,7 +67,7 @@ public class HttpUtils {
      * @return 原始响应体（JSON字符串）
      * @throws IOException 当请求失败时抛出
      */
-    public <T> String postRaw(String url, Map<String, String> headers, T body, HttpConfig config)
+    public static <T> String postRaw(String url, Map<String, String> headers, T body, HttpConfig config)
             throws IOException {
         try {
             // 创建请求
@@ -93,8 +101,8 @@ public class HttpUtils {
      * @return 响应对象
      * @throws IOException 当请求失败时抛出
      */
-    public <R extends HttpBaseResponse> R get(String url, Map<String, String> headers,
-                                              Class<R> responseType, HttpConfig config) throws IOException {
+    public static <R extends HttpBaseResponse> R get(String url, Map<String, String> headers,
+                                                      Class<R> responseType, HttpConfig config) throws IOException {
         return request(url, Method.GET, headers, null, responseType, config);
     }
 
@@ -112,7 +120,7 @@ public class HttpUtils {
      * @return 响应对象
      * @throws IOException 当请求失败时抛出
      */
-    private <T, R extends HttpBaseResponse> R request(
+    private static <T, R extends HttpBaseResponse> R request(
             String url,
             Method method,
             Map<String, String> headers,
@@ -142,7 +150,7 @@ public class HttpUtils {
      * @return HTTP请求对象
      * @throws IOException 当请求创建失败时抛出
      */
-    private <T> HttpRequest createRequest(
+    private static <T> HttpRequest createRequest(
             String url,
             Method method,
             Map<String, String> headers,
@@ -187,7 +195,7 @@ public class HttpUtils {
      * @return 响应对象
      * @throws IOException 当响应处理失败时抛出
      */
-    private <R extends HttpBaseResponse> R handleResponse(
+    private static <R extends HttpBaseResponse> R handleResponse(
             HttpRequest request,
             Class<R> responseType,
             HttpConfig config) throws IOException {
