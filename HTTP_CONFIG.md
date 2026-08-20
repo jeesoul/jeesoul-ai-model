@@ -46,13 +46,17 @@ ai:
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `connect` | int | 5000 | 建立 TCP 连接的超时时间（毫秒） |
-| `socket` | int | 10000 | Socket 读取数据的超时时间（毫秒） |
+| `socket` | int | 10000 | 响应超时时间（毫秒），即等待服务器返回数据的最长时间，也称为读取超时 |
 | `connection-request` | int | 5000 | 从连接池获取连接的超时时间（毫秒） |
 
 **调优建议**：
-- LLM 流式输出：适当调大 `socket`（如 30000-60000）
+- LLM 流式输出：适当调大 `socket`（如 30000-60000），因为 AI 模型响应可能较慢
 - 网络较差：调大 `connect`（如 10000）
 - 连接池不足：调大 `connection-request` 或增加 `max-total`
+
+**术语说明**：
+- `socket` 参数对应 Apache HttpClient 的 `socketTimeout`/`responseTimeout`，表示**HTTP 请求的响应超时**，不是底层 TCP Socket 参数
+- 这是等待服务器返回数据的时间，与 `connect`（建立连接时间）不同
 
 ### 3. 连接保活配置 (`ai.http.keep-alive`)
 

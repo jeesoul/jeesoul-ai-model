@@ -377,7 +377,7 @@ ai:
       time-to-live-seconds: 30    # 连接最长存活时间（秒），默认30
     timeout:
       connect: 5000               # 连接超时（毫秒），默认5000
-      socket: 10000               # Socket 读取超时（毫秒），默认10000
+      socket: 10000               # 响应超时（毫秒），即等待服务器返回数据的时间，默认10000
       connection-request: 5000    # 从连接池获取连接的超时（毫秒），默认5000
     keep-alive:
       duration: 20000             # 连接保活时间（毫秒），默认20000

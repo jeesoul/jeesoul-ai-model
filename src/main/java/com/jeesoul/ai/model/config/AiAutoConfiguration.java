@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Import;
  * @date 2025-06-10
  */
 @Configuration
-@EnableConfigurationProperties(AiProperties.class)
+@EnableConfigurationProperties({AiProperties.class, HttpClientProperties.class})
 @Import({QWenAutoConfiguration.class, ChatGPTAutoConfiguration.class,
         SparkAutoConfiguration.class, DeepSeekAutoConfiguration.class,
         QWenVLAutoConfiguration.class, DouBaoAutoConfiguration.class})

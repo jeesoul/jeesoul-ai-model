@@ -2,7 +2,6 @@ package com.jeesoul.ai.model.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
  * HTTP 客户端配置属性
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Component;
  * @date 2025-06-18
  */
 @Data
-@Component
 @ConfigurationProperties(prefix = "ai.http")
 public class HttpClientProperties {
 
@@ -68,18 +66,22 @@ public class HttpClientProperties {
     public static class Timeout {
         /**
          * 连接超时（毫秒）
+         * 建立 TCP 连接的最长等待时间
          * 默认 5000 毫秒
          */
         private int connect = 5000;
 
         /**
-         * Socket 读取超时（毫秒）
+         * 响应超时（毫秒）
+         * 等待服务器返回数据的最长时间，即 HTTP 请求的读取超时
+         * 对应 Apache HttpClient 的 socketTimeout 和 responseTimeout
          * 默认 10000 毫秒
          */
         private int socket = 10000;
 
         /**
          * 从连接池获取连接的超时（毫秒）
+         * 当连接池无可用连接时的最长等待时间
          * 默认 5000 毫秒
          */
         private int connectionRequest = 5000;
