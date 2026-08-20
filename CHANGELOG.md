@@ -2,35 +2,65 @@
 
 本文档记录 jeesoul-ai-model 的所有版本更新历史。
 
-## [1.1.0-beta2] - 2025-01-XX
+## [1.1.0-beta3] - 2026-08-20
 
-### 🔥 紧急修复
+### 🔥 真正修复 HttpClient5 兼容性问题
 
-#### 修复 1.1.0-beta 发布遗漏
-- **问题**：1.1.0-beta 在本地构建时 pom 正确，但发布到中央仓库时遗漏了依赖声明修复，导致用户运行时仍报 `ClassNotFoundException`
-- **修复**：重新发布为 1.1.0-beta2，确认依赖声明正确传递
+前两次 beta 修错了方向：只改 pom 依赖版本、没改代码，因此问题依旧。本次从代码层面修掉根因。
 
-#### 修复 HttpClient5 依赖缺失问题（继承自 1.1.0-beta）
-- **问题**：1.1.0 版本在使用方运行时报错 `ClassNotFoundException: org.apache.hc.client5.http.config.ConnectionConfig`
-- **原因**：
-  - `httpcore5` 和 `httpcore5-h2` 被错误地放在 `<dependencyManagement>` 中，而不是 `<dependencies>` 中
-  - 导致依赖不会传递给使用方
-  - `httpclient5:5.5.1` 需要 `httpcore5:5.3.x`，但大多数用户环境是 `httpcore5:5.1.x`，版本不兼容
-- **修复**：
-  - 在 `<dependencies>` 中显式声明所有依赖
-  - 降级到兼容版本组合：`httpclient5:5.2.3` + `httpcore5:5.1.5` + `httpcore5-h2:5.1.5`
-  - 作为通用组件，不依赖使用方的 Spring Boot BOM
+#### 根因（推翻此前判断）
+- **现象**：Spring Boot 2.7.x 使用方运行期报 `NoClassDefFoundError: org/apache/hc/client5/http/config/ConnectionConfig`
+- **此前误判**：以为是「发布时遗漏依赖声明」。经核查，发布到中央仓库的 pom 里
+  `httpclient5` / `httpcore5` / `httpcore5-h2` 三个依赖一直都在，发布环节没有问题
+- **真正原因**：
+  - `ConnectionConfig` 是 httpclient5 **5.2 才引入**的类，本库 `HttpClientEngine.buildClient()` 用了它
+  - 使用方继承 `spring-boot-starter-parent:2.7.17`，其 BOM 把 `httpclient5` 管在 **5.1.4**
+  - Maven 规则：**使用方继承的 dependencyManagement 优先级高于传递依赖的版本**，
+    本库声明的 5.2.3 传过去后被强制改写为 5.1.4
+  - 5.1.4 中没有 `ConnectionConfig`，于是运行期找不到类
+- **结论**：版本的最终仲裁权在使用方 BOM 手里，只要库代码依赖 5.2+ 的 API，改版本号无法解决
+
+#### 修复内容
+- **代码**：`HttpClientEngine` 移除 `ConnectionConfig`，改用 5.1.x 就存在的等价 API
+  - `ConnectionConfig.setSocketTimeout` → `SocketConfig.setSoTimeout`
+  - `ConnectionConfig.setConnectTimeout` → `RequestConfig.setConnectTimeout`
+  - `ConnectionConfig.setTimeToLive` → `PoolingHttpClientConnectionManagerBuilder.setConnectionTimeToLive`
+- **pom**：httpclient5 声明版本对齐 Spring Boot 2.7.x BOM（`5.1.4` / `httpcore5 5.1.5`），
+  按最低支持版本编译，后续误用 5.2+ 新 API 会在编译期报错而非使用方运行期报错
+- **pom**：版本号抽为 `httpclient5.version` / `httpcore5.version` 属性，便于跨版本回归验证
+
+#### 兼容性验证
+已实测编译 + 运行双重验证，三组运行时组合均正常：
+
+| httpclient5 | httpcore5 | 编译 | 运行 |
+|-------------|-----------|------|------|
+| 5.1.4       | 5.1.5     | 通过 | 通过 |
+| 5.2.3       | 5.2.4     | 通过 | 通过 |
+| 5.5.1       | 5.3.6     | 通过 | 通过 |
+
+并确认编译产物字节码中已无 `ConnectionConfig` 引用。
 
 ### ⚠️ 重要提示
-**请使用 1.1.0-beta2 版本进行测试。** 1.1.0-beta 存在发布问题请勿使用。稳定后将发布 1.1.1 正式版。
+使用方**不再需要**手工补 `httpclient5` / `httpcore5` 依赖，之前加的补丁依赖可以删除。
+业务代码零改动。稳定后将发布 1.1.1 正式版。
 
 ---
 
-## [1.1.0-beta] - 2025-01-XX ⚠️ 已废弃
+## [1.1.0-beta2] - 2026-08-20 ⚠️ 已废弃
 
-> ⚠️ **警告**：此版本发布时遗漏了依赖声明修复，运行时仍会报 `ClassNotFoundException`。
-> 
-> **请使用 1.1.0-beta2。**
+> ⚠️ **警告**：此版本只改了版本号、未改代码，运行期仍报 `NoClassDefFoundError: ConnectionConfig`。
+>
+> 当时误判为「发布遗漏依赖」，实际根因是代码使用了 httpclient5 5.2+ 才有的 API。
+>
+> **请使用 1.1.0-beta3。**
+
+---
+
+## [1.1.0-beta] - 2026-08-20 ⚠️ 已废弃
+
+> ⚠️ **警告**：此版本运行期报 `NoClassDefFoundError: ConnectionConfig`，与 1.1.0 同因。
+>
+> **请使用 1.1.0-beta3。**
 
 ---
 

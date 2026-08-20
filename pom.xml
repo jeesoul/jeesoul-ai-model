@@ -6,7 +6,7 @@
 
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.0-beta2</version>
+    <version>1.1.0-beta3</version>
 
     <description>jeesoul ai工具</description>
 
@@ -33,6 +33,11 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
         <spring-boot.version>2.7.17</spring-boot.version>
+        <!-- HttpClient5 版本：对齐 Spring Boot 2.7.x BOM，作为本库编译与支持的最低版本。
+             抽成属性便于用 -Djeesoul.httpclient5.version=x.y.z 做跨版本兼容性验证。
+             属性名带 jeesoul 前缀，避免与 Spring Boot BOM 的同名属性混淆。 -->
+        <jeesoul.httpclient5.version>5.1.4</jeesoul.httpclient5.version>
+        <jeesoul.httpcore5.version>5.1.5</jeesoul.httpcore5.version>
     </properties>
 
     <repositories>
@@ -63,21 +68,25 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- HttpClient5 依赖：版本对齐 Spring Boot 2.7.x BOM（httpclient5 5.1.4 / httpcore5 5.1.5）。
+             使用方若继承 spring-boot-starter-parent，其 dependencyManagement 优先级高于传递依赖，
+             会把这里的版本强制改写为 BOM 管理的版本。因此本库按 5.1.x 这个最低版本编译，
+             确保代码不会用到 5.2+ 才有的 API（如 ConnectionConfig），避免使用方运行时 NoClassDefFoundError。
+             使用方需要更高版本时可自行在其 pom 直接声明覆盖，本库代码在 5.1.x~5.5.x 全区间可运行。 -->
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
-            <version>5.2.3</version>
+            <version>${jeesoul.httpclient5.version}</version>
         </dependency>
-        <!-- HttpClient5 核心依赖 - 显式声明版本，确保通用组件的独立性和可预测性 -->
         <dependency>
             <groupId>org.apache.httpcomponents.core5</groupId>
             <artifactId>httpcore5</artifactId>
-            <version>5.1.5</version>
+            <version>${jeesoul.httpcore5.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents.core5</groupId>
             <artifactId>httpcore5-h2</artifactId>
-            <version>5.1.5</version>
+            <version>${jeesoul.httpcore5.version}</version>
         </dependency>
         <!-- 日志支持 -->
         <dependency>

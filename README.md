@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.0-beta2</version>
+    <version>1.1.0-beta3</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -36,6 +36,62 @@
     <artifactId>spring-boot-starter-webflux</artifactId>
 </dependency>
 ```
+
+引入后无需任何额外依赖配置。若你之前为绕开 1.1.0 系列的问题手工加过 `httpclient5` / `httpcore5` 补丁依赖，可以全部删除。
+
+#### 关于 HttpClient5 版本（有安全合规要求的项目请看）
+
+本库同步 HTTP 基于 Apache HttpClient5，pom 中声明的是 `httpclient5:5.1.4` + `httpcore5:5.1.5`，
+与 Spring Boot 2.7.x 的 BOM 完全一致，这是 Apache 官方配套的版本组合。
+
+需要说明两点：
+
+1. **版本的最终决定权在你手里，不在本库。** 若你的项目继承 `spring-boot-starter-parent`，
+   Maven 规则是继承的 `dependencyManagement` 优先级高于传递依赖，
+   所以无论本库声明什么版本，实际生效的都是你的 BOM 管理的版本。
+   本库声明 5.1.4 只是为了与主流使用环境对齐，并作为编译底线，确保代码不误用高版本 API。
+2. **5.1.x 存在已知 CVE。** 其中 CVE-2026-64607（响应带非法 Content-Encoding 时连接不归还连接池，
+   可导致连接耗尽的拒绝服务）影响 5.0-alpha1 ~ 5.6.2 全部版本，修复版本为 **5.6.3**。
+   5.1.x 分支不再收到安全补丁，有安全扫描或合规要求的项目，
+   可在自己项目的 `<dependencies>` 中**直接声明**更高版本覆盖：
+
+```xml
+<!-- 按需升级 HttpClient5，本库在 5.1.x ~ 5.6.x 全区间均可正常运行 -->
+<dependency>
+    <groupId>org.apache.httpcomponents.client5</groupId>
+    <artifactId>httpclient5</artifactId>
+    <version>5.6.4</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.httpcomponents.core5</groupId>
+    <artifactId>httpcore5</artifactId>
+    <version>5.4.3</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.httpcomponents.core5</groupId>
+    <artifactId>httpcore5-h2</artifactId>
+    <version>5.4.3</version>
+</dependency>
+```
+
+升级时 `httpclient5` 与 `httpcore5` 必须成对匹配，**混搭会导致运行期找不到类**。
+两者是 Apache HttpComponents 下独立发布的子项目，补丁号各自推进，官方配套关系如下：
+
+| httpclient5 | 配套 httpcore5 | 说明 |
+|-------------|----------------|------|
+| 5.1.4       | 5.1.5          | 本库默认，对齐 Spring Boot 2.7.x BOM |
+| 5.2.3       | 5.2.4          | 已实测 |
+| 5.5.1       | 5.3.6          | 已实测 |
+| 5.6.4       | 5.4.3          | 已实测，含 CVE-2026-64607 修复，仍兼容 Java 8 |
+
+注意必须写在 `<dependencies>` 里，写进 `<dependencyManagement>` 对传递依赖无效。
+改完执行下面命令确认最终仲裁结果：
+
+```bash
+mvn dependency:tree -Dincludes=org.apache.httpcomponents.client5:*,org.apache.httpcomponents.core5:*
+```
+
+本库已实测上表全部四组运行时组合，编译与运行均正常，升级不影响功能。
 
 ### 2. 配置参数
 
@@ -456,33 +512,39 @@ src/main/java/com/jeesoul/ai/model/
 
 ## 🔄 版本历史
 
-**当前版本：1.1.0-beta2**
+**当前版本：1.1.0-beta3**
 
 > ⚠️ **重要**：
-> - **1.1.0-beta 版本发布时遗漏了依赖声明，运行时仍会报 `ClassNotFoundException`，请勿使用。**
-> - 1.1.0 版本 pom 依赖声明有缺陷，新接入请使用 1.1.0-beta2。
-> - 已在使用 1.1.0 的项目无需换版本，按 [1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md) 在自身 pom 补三个依赖即可（已实测验证）。
+> - **1.1.0、1.1.0-beta、1.1.0-beta2 在 Spring Boot 2.7.x 下运行期均会报 `NoClassDefFoundError: ConnectionConfig`，请勿使用。**
+> - 新接入请直接使用 **1.1.0-beta3**，无需任何额外配置。
+> - 仍在使用上述三个版本的项目，可按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 临时绕过，或直接升级到 beta3 并删掉补丁依赖。
 
-### v1.1.0-beta2 紧急修复（当前版本）
-- 🔥 修复 1.1.0-beta 发布时遗漏的依赖声明（本地构建正确，但发布到中央仓库时未包含修复）
-- 🔥 修复 1.1.0 版本的 HttpClient5 依赖缺失问题
-- 🔥 显式声明所有 HttpClient5 依赖，确保通用组件的独立性
-- 🔥 解决运行时 `ClassNotFoundException` 错误
+### v1.1.0-beta3 真正修复（当前版本）
+- 🔥 从代码层面修掉根因：`HttpClientEngine` 不再使用 httpclient5 5.2+ 才有的 `ConnectionConfig`，
+  改用 `SocketConfig` + `RequestConfig` + `setConnectionTimeToLive`（5.1.x ~ 5.5.x 全区间通用）
+- 🔥 pom 的 httpclient5 版本对齐 Spring Boot 2.7.x BOM（5.1.4 / 5.1.5），按最低支持版本编译，
+  杜绝再次误用新版 API
+- ✅ 已实测 httpclient5 5.1.4 / 5.2.3 / 5.5.1 三组运行时均正常
+- ✅ 使用方**不再需要**手工补 httpclient5 / httpcore5 依赖
 
-### v1.1.0-beta ⚠️ 已废弃
-- 发布时遗漏依赖声明，运行时仍报 `ClassNotFoundException`
-- **请使用 1.1.0-beta2**
+### v1.1.0-beta2、v1.1.0-beta ⚠️ 均已废弃
+- 两次 beta 都只改了 pom 依赖版本、没改代码，未能解决问题
+- 之前判断的「发布遗漏依赖」是误判：发布的 pom 里三个依赖一直都在，
+  真正原因是使用方继承的 `dependencyManagement` 优先级高于传递依赖，把版本强制改写为 5.1.4
+- **请使用 1.1.0-beta3**
 
 ### v1.1.0 主要更新 ⚠️ 需打补丁
 - ✅ 彻底移除 Hutool 依赖，自研 HTTP 封装和 Spring 工具类
 - ✅ 新增 HTTP 客户端配置支持（连接池、超时、保活参数可通过 YML 配置）
 - ✅ 完全向后兼容，对外 API 零变化
-- ⚠️ **已知问题**：pom 未传递 httpcore5 且 httpclient5 版本线不匹配，按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 补三个依赖后可正常使用
+- ⚠️ **已知问题**：代码使用了 httpclient5 5.2+ 才有的 API，在 Spring Boot 2.7.x 下运行期报错，
+  按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 补三个依赖后可正常使用（已实测验证）
 
 详细更新日志：📖 [CHANGELOG.md](CHANGELOG.md)
 
 ### 历史版本文档
-- [v1.1.0-beta2 详细说明](docs/versions/v1.1.0-beta2.md)
+- [v1.1.0-beta3 详细说明](docs/versions/v1.1.0-beta3.md)
+- [v1.1.0-beta2 详细说明（已废弃）](docs/versions/v1.1.0-beta2.md)
 - [v1.1.0-beta 详细说明（已废弃）](docs/versions/v1.1.0-beta.md)
 - [v1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md)
 - [v1.1.0 详细说明](docs/versions/v1.1.0.md)
