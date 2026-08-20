@@ -1,2 +1,3 @@
 com.jeesoul.ai.model.config.HttpConfig
 com.jeesoul.ai.model.config.AiAutoConfiguration
+com.jeesoul.ai.model.util.SpringContextHolder

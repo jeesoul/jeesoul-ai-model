@@ -1,8 +1,8 @@
 package com.jeesoul.ai.model.strategy;
 
-import cn.hutool.extra.spring.SpringUtil;
 import com.jeesoul.ai.model.constant.AiModel;
 import com.jeesoul.ai.model.service.AiService;
+import com.jeesoul.ai.model.util.SpringContextHolder;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,7 +46,7 @@ public class AiStrategyContext {
         if (serviceName == null) {
             throw new IllegalArgumentException("未注册的模型: " + modelName);
         }
-        return SpringUtil.getBean(serviceName);
+        return SpringContextHolder.getBean(serviceName);
     }
 
     /**

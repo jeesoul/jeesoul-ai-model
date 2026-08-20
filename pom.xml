@@ -6,7 +6,7 @@
 
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.9-GA</version>
+    <version>1.1.0</version>
 
     <description>jeesoul ai工具</description>
 
@@ -40,6 +40,17 @@
     </repositories>
     <dependencyManagement>
         <dependencies>
+            <!-- 显式置顶 httpcore5 至 5.3.6，覆盖 Spring Boot BOM 的 5.1.5（import 方式下属性覆盖无效，须在此声明且置于 BOM import 之前），与 httpclient5 5.5.1 所需版本对齐，避免 NoSuchMethodError -->
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5</artifactId>
+                <version>5.3.6</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5-h2</artifactId>
+                <version>5.3.6</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-parent</artifactId>
@@ -64,9 +75,9 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-            <version>5.8.40</version>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.5.1</version>
         </dependency>
         <!-- 日志支持 -->
         <dependency>
@@ -99,6 +110,17 @@
     </scm>
     <build>
         <plugins>
+            <!-- 编译插件：显式锁定 Java 8，避免默认 source 1.5 导致 lambda 等语法编译失败 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
             <!-- central发布插件 -->
             <plugin>
                 <groupId>org.sonatype.central</groupId>
