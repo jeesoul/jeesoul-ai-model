@@ -458,17 +458,18 @@ src/main/java/com/jeesoul/ai/model/
 
 **当前版本：1.1.1**
 
-> ⚠️ **重要**：1.1.0 版本存在依赖缺失问题，请直接使用 1.1.1 版本。
+> ⚠️ **重要**：1.1.0 版本存在依赖缺失问题，请直接使用 1.1.1 版本。如已使用 1.1.0，请查看 [1.1.0 补救方案](docs/versions/v1.1.0-hotfix.md)。
 
 ### v1.1.1 紧急修复（当前版本）
 - 🔥 修复 1.1.0 版本的 HttpClient5 依赖缺失问题
-- 🔥 解决运行时 `ClassNotFoundException: ConnectionConfig` 错误
+- 🔥 显式声明所有 HttpClient5 依赖，确保通用组件的独立性
+- 🔥 解决运行时 `ClassNotFoundException` 错误
 
 ### v1.1.0 主要更新 ⚠️ 已废弃
 - ✅ 彻底移除 Hutool 依赖，自研 HTTP 封装和 Spring 工具类
 - ✅ 新增 HTTP 客户端配置支持（连接池、超时、保活参数可通过 YML 配置）
 - ✅ 完全向后兼容，对外 API 零变化
-- ⚠️ **已知问题**：存在依赖缺失，请使用 1.1.1
+- ⚠️ **已知问题**：存在依赖缺失，请使用 1.1.1 或查看 [补救方案](docs/versions/v1.1.0-hotfix.md)
 
 详细更新日志：📖 [CHANGELOG.md](CHANGELOG.md)
 
