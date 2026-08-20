@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.0-beta</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -456,24 +456,26 @@ src/main/java/com/jeesoul/ai/model/
 
 ## 🔄 版本历史
 
-**当前版本：1.1.1**
+**当前版本：1.1.0-beta**
 
-> ⚠️ **重要**：1.1.0 版本存在依赖缺失问题，请直接使用 1.1.1 版本。如已使用 1.1.0，请查看 [1.1.0 补救方案](docs/versions/v1.1.0-hotfix.md)。
+> ⚠️ **重要**：1.1.0 版本 pom 依赖声明有缺陷，新接入请使用 1.1.0-beta。已在使用 1.1.0 的项目无需换版本，按 [1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md) 在自身 pom 补三个依赖即可（已实测验证）。
 
-### v1.1.1 紧急修复（当前版本）
+### v1.1.0-beta 紧急修复（当前版本）
 - 🔥 修复 1.1.0 版本的 HttpClient5 依赖缺失问题
 - 🔥 显式声明所有 HttpClient5 依赖，确保通用组件的独立性
 - 🔥 解决运行时 `ClassNotFoundException` 错误
 
-### v1.1.0 主要更新 ⚠️ 已废弃
+### v1.1.0 主要更新 ⚠️ 需打补丁
 - ✅ 彻底移除 Hutool 依赖，自研 HTTP 封装和 Spring 工具类
 - ✅ 新增 HTTP 客户端配置支持（连接池、超时、保活参数可通过 YML 配置）
 - ✅ 完全向后兼容，对外 API 零变化
-- ⚠️ **已知问题**：存在依赖缺失，请使用 1.1.1 或查看 [补救方案](docs/versions/v1.1.0-hotfix.md)
+- ⚠️ **已知问题**：pom 未传递 httpcore5 且 httpclient5 版本线不匹配，按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 补三个依赖后可正常使用
 
 详细更新日志：📖 [CHANGELOG.md](CHANGELOG.md)
 
 ### 历史版本文档
+- [v1.1.0-beta 详细说明](docs/versions/v1.1.0-beta.md)
+- [v1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md)
 - [v1.1.0 详细说明](docs/versions/v1.1.0.md)
 - [v1.0.9 详细说明](docs/versions/v1.0.9.md)
 - [升级到 1.1.0 指南](docs/migration/upgrade-to-1.1.0.md)

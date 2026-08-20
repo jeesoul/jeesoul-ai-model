@@ -6,7 +6,7 @@
 
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.0-beta</version>
 
     <description>jeesoul ai工具</description>
 
@@ -122,14 +122,15 @@
                 </configuration>
             </plugin>
             <!-- central发布插件 -->
+            <!-- 版本须保持较新：0.4.0 的响应模型不认服务端新增的 warnings 字段，
+                 会在上传成功后的状态轮询阶段抛 UnrecognizedPropertyException 导致构建失败 -->
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.4.0</version>
+                <version>0.11.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>mymaven</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
                 </configuration>
             </plugin>
             <!-- source源码插件 -->

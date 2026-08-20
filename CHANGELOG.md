@@ -2,23 +2,32 @@
 
 本文档记录 jeesoul-ai-model 的所有版本更新历史。
 
-## [1.1.1] - 2025-01-XX
+## [1.1.0-beta] - 2025-01-XX
 
 ### 🔥 紧急修复
 
 #### 修复 HttpClient5 依赖缺失问题
 - **问题**：1.1.0 版本在使用方运行时报错 `ClassNotFoundException: org.apache.hc.client5.http.config.ConnectionConfig`
-- **原因**：`httpclient5` 的核心依赖 `httpcore5` 和 `httpcore5-h2` 未在 `dependencies` 中显式声明，导致使用方无法传递获取
-- **修复**：在 `dependencies` 中显式添加 `httpcore5` 和 `httpcore5-h2` 依赖
+- **原因**：
+  - `httpcore5` 和 `httpcore5-h2` 被错误地放在 `<dependencyManagement>` 中，而不是 `<dependencies>` 中
+  - 导致依赖不会传递给使用方
+  - `httpclient5:5.5.1` 需要 `httpcore5:5.3.x`，但大多数用户环境是 `httpcore5:5.1.x`，版本不兼容
+- **修复**：
+  - 在 `<dependencies>` 中显式声明所有依赖
+  - 降级到兼容版本组合：`httpclient5:5.2.3` + `httpcore5:5.1.5` + `httpcore5-h2:5.1.5`
+  - 作为通用组件，不依赖使用方的 Spring Boot BOM
 
 ### ⚠️ 重要提示
-**请直接使用 1.1.1 版本，跳过 1.1.0。** 如果已使用 1.1.0，请立即升级到 1.1.1。
+**请使用 1.1.0-beta 版本进行测试。** 如果已使用 1.1.0，请升级到 1.1.0-beta。稳定后将发布 1.1.1 正式版。
 
 ---
 
-## [1.1.0] - 2025-01-XX ⚠️ 已废弃
+## [1.1.0] - 2025-01-XX ⚠️ 需打补丁
 
-> ⚠️ **警告**：此版本存在依赖缺失问题，运行时会报 `ClassNotFoundException`。请使用 1.1.1 修复版本。
+> ⚠️ **警告**：此版本 pom 依赖声明有缺陷，直接引入运行时会报 `ClassNotFoundException`。
+>
+> 已在使用的项目**无需更换版本**，按 [v1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md) 在自身 pom 中补三个依赖即可正常工作（已实测验证）。
+> 新接入建议直接用 1.1.0-beta。
 
 ### 🎉 重大更新
 
@@ -44,7 +53,7 @@
 ### 🔧 其他改进
 - 版本号规整为语义化版本 `1.1.0`
 - pom 显式锁定 Java 8 编译配置（`maven-compiler-plugin` 3.8.1）
-- `httpcore5` 前置覆盖避免版本冲突
+- `httpcore5` 前置覆盖尝试规避版本冲突（❌ 该做法写在 `dependencyManagement` 中未生效，即本版本依赖问题的成因）
 
 ### 📝 文档更新
 - 新增 `HTTP_CONFIG.md` - HTTP 客户端配置详解
