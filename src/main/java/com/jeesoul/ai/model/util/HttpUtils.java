@@ -1,8 +1,8 @@
 package com.jeesoul.ai.model.util;
 
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.http.Method;
+import com.jeesoul.ai.model.http.HttpRequest;
+import com.jeesoul.ai.model.http.HttpResponse;
+import com.jeesoul.ai.model.http.Method;
 import com.jeesoul.ai.model.response.HttpBaseResponse;
 import lombok.Builder;
 import lombok.Data;

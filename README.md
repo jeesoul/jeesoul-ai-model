@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.0.9-GA</version>
+    <version>1.1.0</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -173,7 +173,7 @@ ModelRequestVO request = new ModelRequestVO()
     ));
 ```
 
-**详细使用指南：** 📖 [使用示例文档](docs/examples.md)（待补充）
+> 更多完整示例见下方 [完整示例](#-完整示例) 章节。
 
 ## 📁 完整示例
 
@@ -207,9 +207,9 @@ ModelRequestVO request = new ModelRequestVO()
 
 ## 🔧 扩展自定义模型
 
-### 方式一：使用 @AiModelService 注解（推荐，v1.0.9-GA 新方式）
+### 方式一：使用 @AiModelService 注解（推荐）
 
-**v1.0.9-GA 重大改进**：扩展自定义模型不再需要修改 `AiProperties.java`，符合开闭原则！
+扩展自定义模型无需修改 `AiProperties.java`，符合开闭原则。
 
 #### 1. 创建配置类（实现 ModelConfig 接口）
 
@@ -338,13 +338,8 @@ public class CustomModelRegistrar {
 - `modelProvider` / `modelName` - 模型信息
 - `usage` - Token 使用统计
 
-**详细 API 文档：** 📖 [API 参考文档](docs/api-reference.md)（待补充）
-
 ## 💡 最佳实践
 
-**详细指南：** 📖 [最佳实践文档](docs/best-practices.md)（待补充）
-
-**核心要点：**
 - ✅ 错误处理：使用 try-catch 捕获 `AiException` 和 `IllegalArgumentException`
 - ✅ 重试机制：使用 Spring Retry 或自定义重试逻辑
 - ✅ 异步处理：使用 `@Async` 或 `CompletableFuture` 处理长时间任务
@@ -355,7 +350,8 @@ public class CustomModelRegistrar {
 
 **配置优先级**：请求参数 > YML配置 > 代码默认值
 
-**基础配置：**
+### 基础配置
+
 ```yaml
 ai:
   qwen:
@@ -367,7 +363,48 @@ ai:
     model: qwen-turbo    # 可选，默认模型
 ```
 
-**详细配置：** 📖 [配置参考文档](docs/configuration.md)（待补充）
+### HTTP 客户端配置（v1.1.0+）
+
+从 1.1.0 版本开始，支持通过 YML 配置 HTTP 客户端参数（连接池、超时等）：
+
+```yaml
+ai:
+  http:
+    pool:
+      max-total: 200              # 连接池最大连接数，默认200
+      max-per-route: 200          # 每个路由最大连接数，默认200
+      evict-idle-seconds: 30      # 空闲连接回收阈值（秒），默认30
+      time-to-live-seconds: 30    # 连接最长存活时间（秒），默认30
+    timeout:
+      connect: 5000               # 连接超时（毫秒），默认5000
+      socket: 10000               # 响应超时（毫秒），即等待服务器返回数据的时间，默认10000
+      connection-request: 5000    # 从连接池获取连接的超时（毫秒），默认5000
+    keep-alive:
+      duration: 20000             # 连接保活时间（毫秒），默认20000
+      enable-retry: false         # 是否启用自动重试，默认false（LLM场景不建议开启）
+```
+
+**常见场景配置**：
+
+```yaml
+# 高并发场景
+ai:
+  http:
+    pool:
+      max-total: 500
+      max-per-route: 500
+    timeout:
+      socket: 30000
+
+# 网络不稳定场景
+ai:
+  http:
+    timeout:
+      connect: 15000
+      socket: 60000
+```
+
+> 💡 **提示**：所有参数均为可选，不配置时使用默认值。详细配置说明见 📖 [HTTP_CONFIG.md](HTTP_CONFIG.md)
 
 ## 🔍 检查模型状态
 
@@ -386,7 +423,7 @@ if (AiStrategyContext.isModelRegistered("qWen")) {
 | Spring Boot | 2.7.17 | 应用框架 |
 | Spring WebFlux | 2.7.17 | 响应式编程 |
 | Lombok | Latest | 简化代码 |
-| Hutool | 5.8.25 | 工具类库 |
+| Apache HttpClient | 5.5.1 | 同步 HTTP 客户端（内置封装） |
 | SLF4J | 1.7.36 | 日志门面 |
 
 ## 📖 架构设计
@@ -401,6 +438,7 @@ src/main/java/com/jeesoul/ai/model/
 ├── entity/          # 实体类
 ├── exception/       # 异常定义
 ├── factory/         # 工厂类
+├── http/            # 内置 HTTP 封装（基于 Apache HttpClient 5.x）
 ├── request/         # 请求对象
 ├── response/        # 响应对象
 ├── service/         # 服务实现
@@ -418,16 +456,27 @@ src/main/java/com/jeesoul/ai/model/
 - **接口隔离原则** - `ModelConfig` 接口解耦配置与实现
 - **开闭原则** - 通过 `ModelConfig` 接口支持扩展，无需修改核心代码
 
-### 架构改进（v1.0.9-GA）
+### 架构改进
 
+**v1.1.0**
+- ✅ **去除 Hutool SpringUtil 依赖**：内部改用 Spring 原生 `ApplicationContextAware` 封装的 `SpringContextHolder` 获取 Bean，更贴合 Spring 生态、减少初始化约束。通过 Spring Boot 自动配置 SPI 注册，Bean 名为全限定类名，不会与使用方 Bean 冲突。**对外 API 与行为完全不变，无需修改任何业务代码即可升级。**
+- ✅ **HTTP 客户端切换为 Apache HttpClient 5.x**：同步 HTTP 底层由 Hutool 替换为内置的 Apache HttpClient 5.x 封装，更稳定、更适合企业级高并发场景。对外 API 完全一致，升级无需修改业务代码。
+- ✅ **HTTP 客户端配置支持**：新增连接池、超时、保活等参数的 YML 配置支持，所有参数可按需调整（详见 [HTTP_CONFIG.md](HTTP_CONFIG.md)）
+- ✅ **彻底移除 Hutool 依赖**：项目不再依赖 `hutool-all`。
+- ✅ **版本号规整**：统一采用语义化版本 `1.1.0`（此前 pom 与提交信息编号不一致）。
+- ✅ **编译配置修复**：pom 显式锁定 `maven-compiler-plugin` 的 source/target 为 Java 8。
+
+**v1.0.9-GA**
 - ✅ **ModelConfig 接口**：解耦配置与实现，扩展自定义模型无需修改框架代码
 - ✅ **HTTP 工具类静态化**：`HttpUtils` 和 `StreamHttpUtils` 改为静态方法，简化依赖注入
 
-详细说明见：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
+历史版本（1.0.9）详细说明见：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
 
 ## 🔄 版本升级
 
-**v1.0.9-GA 完全向后兼容** v1.0.9，现有代码无需修改即可升级。详细升级指南：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
+**v1.1.0 完全向后兼容历史版本**，现有代码无需修改即可升级——本次为内部重构（去除 Hutool SpringUtil 依赖、同步 HTTP 底层切换为 Apache HttpClient 5.x、彻底移除 Hutool），未改动任何公共 API 签名与行为。
+
+> 升级说明：直接将依赖版本改为 `1.1.0` 即可。若你的工程此前依赖了本库**传递**的 Hutool（`cn.hutool.*`），由于本库已彻底移除该依赖，需在自己的工程中显式引入 `hutool-all`。
 
 ## ⚠️ 注意事项
 
@@ -439,9 +488,6 @@ src/main/java/com/jeesoul/ai/model/
 
 ## ❓ 常见问题
 
-**详细 FAQ：** 📖 [FAQ 常见问题](docs/faq.md)（待补充）
-
-**快速参考：**
 - **配置项**：使用中划线 `api-key` 而非 `apiKey`
 - **流式调用**：必须调用 `subscribe()`
 - **模型选择**：代码生成→DeepSeek，通用对话→QWen/ChatGPT，图片分析→QWenVL
@@ -450,7 +496,15 @@ src/main/java/com/jeesoul/ai/model/
 
 ## 📝 更新日志
 
-**完整更新日志：** 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
+**v1.1.0**（当前版本）
+- 去除 Hutool `SpringUtil` 依赖，内部改用 Spring 原生 `SpringContextHolder`（对外零变化，完全兼容）
+- 同步 HTTP 底层由 Hutool 切换为内置 Apache HttpClient 5.x 封装，升级无需修改业务代码
+- **新增 HTTP 客户端配置支持**：连接池、超时、保活等参数均可通过 YML 配置（详见 [HTTP_CONFIG.md](HTTP_CONFIG.md)）
+- 彻底移除 `hutool-all` 依赖
+- 版本号规整为语义化版本 `1.1.0`
+- pom 显式锁定 Java 8 编译配置
+
+历史版本（1.0.9）更新日志：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
 
 ## 📚 文档导航
 
@@ -464,10 +518,8 @@ src/main/java/com/jeesoul/ai/model/
 - 📖 [多模态视觉示例](examples/multimodal-vision/README.md) - 图片/视频分析
 
 ### 参考文档
-- 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md) - 版本更新日志
-- 📖 [API 参考文档](docs/api-reference.md) - 详细 API 说明（待补充）
-- 📖 [配置参考文档](docs/configuration.md) - 完整配置说明（待补充）
-- 📖 [FAQ 常见问题](docs/faq.md) - 常见问题解答（待补充）
+- 📖 [HTTP_CONFIG.md](HTTP_CONFIG.md) - HTTP 客户端配置详解（v1.1.0+）
+- 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md) - 历史版本（1.0.9）更新日志
 
 ### 官方 API 文档
 - [通义千问](https://help.aliyun.com/zh/dashscope/) | [OpenAI](https://platform.openai.com/docs/api-reference) | [DeepSeek](https://api-docs.deepseek.com/zh-cn/) | [讯飞星火](https://www.xfyun.cn/doc/spark/) | [豆包](https://www.volcengine.com/docs/82379/1494384)
