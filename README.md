@@ -453,30 +453,22 @@ src/main/java/com/jeesoul/ai/model/
 - **策略模式** - `AiStrategyContext` 动态选择具体实现
 - **模板方法模式** - `AbstractAiService` 定义通用流程
 - **建造者模式** - `ModelRequestVO` 支持链式调用
-- **接口隔离原则** - `ModelConfig` 接口解耦配置与实现
-- **开闭原则** - 通过 `ModelConfig` 接口支持扩展，无需修改核心代码
 
-### 架构改进
+## 🔄 版本历史
 
-**v1.1.0**
-- ✅ **去除 Hutool SpringUtil 依赖**：内部改用 Spring 原生 `ApplicationContextAware` 封装的 `SpringContextHolder` 获取 Bean，更贴合 Spring 生态、减少初始化约束。通过 Spring Boot 自动配置 SPI 注册，Bean 名为全限定类名，不会与使用方 Bean 冲突。**对外 API 与行为完全不变，无需修改任何业务代码即可升级。**
-- ✅ **HTTP 客户端切换为 Apache HttpClient 5.x**：同步 HTTP 底层由 Hutool 替换为内置的 Apache HttpClient 5.x 封装，更稳定、更适合企业级高并发场景。对外 API 完全一致，升级无需修改业务代码。
-- ✅ **HTTP 客户端配置支持**：新增连接池、超时、保活等参数的 YML 配置支持，所有参数可按需调整（详见 [HTTP_CONFIG.md](HTTP_CONFIG.md)）
-- ✅ **彻底移除 Hutool 依赖**：项目不再依赖 `hutool-all`。
-- ✅ **版本号规整**：统一采用语义化版本 `1.1.0`（此前 pom 与提交信息编号不一致）。
-- ✅ **编译配置修复**：pom 显式锁定 `maven-compiler-plugin` 的 source/target 为 Java 8。
+**当前版本：1.1.0**
 
-**v1.0.9-GA**
-- ✅ **ModelConfig 接口**：解耦配置与实现，扩展自定义模型无需修改框架代码
-- ✅ **HTTP 工具类静态化**：`HttpUtils` 和 `StreamHttpUtils` 改为静态方法，简化依赖注入
+### v1.1.0 主要更新
+- ✅ 彻底移除 Hutool 依赖，自研 HTTP 封装和 Spring 工具类
+- ✅ 新增 HTTP 客户端配置支持（连接池、超时、保活参数可通过 YML 配置）
+- ✅ 完全向后兼容，对外 API 零变化
 
-历史版本（1.0.9）详细说明见：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
+详细更新日志：📖 [CHANGELOG.md](CHANGELOG.md)
 
-## 🔄 版本升级
-
-**v1.1.0 完全向后兼容历史版本**，现有代码无需修改即可升级——本次为内部重构（去除 Hutool SpringUtil 依赖、同步 HTTP 底层切换为 Apache HttpClient 5.x、彻底移除 Hutool），未改动任何公共 API 签名与行为。
-
-> 升级说明：直接将依赖版本改为 `1.1.0` 即可。若你的工程此前依赖了本库**传递**的 Hutool（`cn.hutool.*`），由于本库已彻底移除该依赖，需在自己的工程中显式引入 `hutool-all`。
+### 历史版本文档
+- [v1.1.0 详细说明](docs/versions/v1.1.0.md)
+- [v1.0.9 详细说明](docs/versions/v1.0.9.md)
+- [升级到 1.1.0 指南](docs/migration/upgrade-to-1.1.0.md)
 
 ## ⚠️ 注意事项
 
@@ -494,18 +486,6 @@ src/main/java/com/jeesoul/ai/model/
 - **思考模式**：`thinking`(Boolean) 标识是否思考，`thinkingContent`(String) 存储思考内容
 - **Token统计**：豆包流式接口不支持，使用同步接口
 
-## 📝 更新日志
-
-**v1.1.0**（当前版本）
-- 去除 Hutool `SpringUtil` 依赖，内部改用 Spring 原生 `SpringContextHolder`（对外零变化，完全兼容）
-- 同步 HTTP 底层由 Hutool 切换为内置 Apache HttpClient 5.x 封装，升级无需修改业务代码
-- **新增 HTTP 客户端配置支持**：连接池、超时、保活等参数均可通过 YML 配置（详见 [HTTP_CONFIG.md](HTTP_CONFIG.md)）
-- 彻底移除 `hutool-all` 依赖
-- 版本号规整为语义化版本 `1.1.0`
-- pom 显式锁定 Java 8 编译配置
-
-历史版本（1.0.9）更新日志：📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md)
-
 ## 📚 文档导航
 
 ### 核心文档
@@ -513,13 +493,18 @@ src/main/java/com/jeesoul/ai/model/
 - 📖 [使用指南](#-使用指南) - 基础对话、思考模式、流式对话
 - 📖 [扩展自定义模型](#-扩展自定义模型) - 零侵入扩展
 
+### 版本文档
+- 📖 [CHANGELOG.md](CHANGELOG.md) - 版本更新日志
+- 📖 [v1.1.0 详细说明](docs/versions/v1.1.0.md)
+- 📖 [v1.0.9 详细说明](docs/versions/v1.0.9.md)
+- 📖 [升级到 1.1.0 指南](docs/migration/upgrade-to-1.1.0.md)
+
+### 配置文档
+- 📖 [HTTP_CONFIG.md](HTTP_CONFIG.md) - HTTP 客户端配置详解（v1.1.0+）
+
 ### 示例文档
 - 📖 [Claude AI 集成示例](examples/claude-integration/README.md) - 自定义模型扩展完整示例
 - 📖 [多模态视觉示例](examples/multimodal-vision/README.md) - 图片/视频分析
-
-### 参考文档
-- 📖 [HTTP_CONFIG.md](HTTP_CONFIG.md) - HTTP 客户端配置详解（v1.1.0+）
-- 📖 [RELEASE_NOTES_v1.0.9.md](RELEASE_NOTES_v1.0.9.md) - 历史版本（1.0.9）更新日志
 
 ### 官方 API 文档
 - [通义千问](https://help.aliyun.com/zh/dashscope/) | [OpenAI](https://platform.openai.com/docs/api-reference) | [DeepSeek](https://api-docs.deepseek.com/zh-cn/) | [讯飞星火](https://www.xfyun.cn/doc/spark/) | [豆包](https://www.volcengine.com/docs/82379/1494384)
