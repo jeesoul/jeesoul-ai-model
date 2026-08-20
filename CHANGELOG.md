@@ -2,7 +2,23 @@
 
 本文档记录 jeesoul-ai-model 的所有版本更新历史。
 
-## [1.1.0] - 2025-01-XX
+## [1.1.1] - 2025-01-XX
+
+### 🔥 紧急修复
+
+#### 修复 HttpClient5 依赖缺失问题
+- **问题**：1.1.0 版本在使用方运行时报错 `ClassNotFoundException: org.apache.hc.client5.http.config.ConnectionConfig`
+- **原因**：`httpclient5` 的核心依赖 `httpcore5` 和 `httpcore5-h2` 未在 `dependencies` 中显式声明，导致使用方无法传递获取
+- **修复**：在 `dependencies` 中显式添加 `httpcore5` 和 `httpcore5-h2` 依赖
+
+### ⚠️ 重要提示
+**请直接使用 1.1.1 版本，跳过 1.1.0。** 如果已使用 1.1.0，请立即升级到 1.1.1。
+
+---
+
+## [1.1.0] - 2025-01-XX ⚠️ 已废弃
+
+> ⚠️ **警告**：此版本存在依赖缺失问题，运行时会报 `ClassNotFoundException`。请使用 1.1.1 修复版本。
 
 ### 🎉 重大更新
 
