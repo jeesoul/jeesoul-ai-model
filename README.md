@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.0-beta</version>
+    <version>1.1.0-beta2</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -456,14 +456,22 @@ src/main/java/com/jeesoul/ai/model/
 
 ## 🔄 版本历史
 
-**当前版本：1.1.0-beta**
+**当前版本：1.1.0-beta2**
 
-> ⚠️ **重要**：1.1.0 版本 pom 依赖声明有缺陷，新接入请使用 1.1.0-beta。已在使用 1.1.0 的项目无需换版本，按 [1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md) 在自身 pom 补三个依赖即可（已实测验证）。
+> ⚠️ **重要**：
+> - **1.1.0-beta 版本发布时遗漏了依赖声明，运行时仍会报 `ClassNotFoundException`，请勿使用。**
+> - 1.1.0 版本 pom 依赖声明有缺陷，新接入请使用 1.1.0-beta2。
+> - 已在使用 1.1.0 的项目无需换版本，按 [1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md) 在自身 pom 补三个依赖即可（已实测验证）。
 
-### v1.1.0-beta 紧急修复（当前版本）
+### v1.1.0-beta2 紧急修复（当前版本）
+- 🔥 修复 1.1.0-beta 发布时遗漏的依赖声明（本地构建正确，但发布到中央仓库时未包含修复）
 - 🔥 修复 1.1.0 版本的 HttpClient5 依赖缺失问题
 - 🔥 显式声明所有 HttpClient5 依赖，确保通用组件的独立性
 - 🔥 解决运行时 `ClassNotFoundException` 错误
+
+### v1.1.0-beta ⚠️ 已废弃
+- 发布时遗漏依赖声明，运行时仍报 `ClassNotFoundException`
+- **请使用 1.1.0-beta2**
 
 ### v1.1.0 主要更新 ⚠️ 需打补丁
 - ✅ 彻底移除 Hutool 依赖，自研 HTTP 封装和 Spring 工具类
@@ -474,7 +482,8 @@ src/main/java/com/jeesoul/ai/model/
 详细更新日志：📖 [CHANGELOG.md](CHANGELOG.md)
 
 ### 历史版本文档
-- [v1.1.0-beta 详细说明](docs/versions/v1.1.0-beta.md)
+- [v1.1.0-beta2 详细说明](docs/versions/v1.1.0-beta2.md)
+- [v1.1.0-beta 详细说明（已废弃）](docs/versions/v1.1.0-beta.md)
 - [v1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md)
 - [v1.1.0 详细说明](docs/versions/v1.1.0.md)
 - [v1.0.9 详细说明](docs/versions/v1.0.9.md)
