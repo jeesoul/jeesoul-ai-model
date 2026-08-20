@@ -40,17 +40,6 @@
     </repositories>
     <dependencyManagement>
         <dependencies>
-            <!-- 显式置顶 httpcore5 至 5.3.6，覆盖 Spring Boot BOM 的 5.1.5（import 方式下属性覆盖无效，须在此声明且置于 BOM import 之前），与 httpclient5 5.5.1 所需版本对齐，避免 NoSuchMethodError -->
-            <dependency>
-                <groupId>org.apache.httpcomponents.core5</groupId>
-                <artifactId>httpcore5</artifactId>
-                <version>5.3.6</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.core5</groupId>
-                <artifactId>httpcore5-h2</artifactId>
-                <version>5.3.6</version>
-            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-parent</artifactId>
@@ -77,19 +66,9 @@
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
-            <version>5.5.1</version>
+            <version>5.2.3</version>
         </dependency>
-        <!-- Apache HttpClient5 必需的核心依赖 - 显式指定版本避免被使用方的 Spring Boot BOM 覆盖 -->
-        <dependency>
-            <groupId>org.apache.httpcomponents.core5</groupId>
-            <artifactId>httpcore5</artifactId>
-            <version>5.3.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents.core5</groupId>
-            <artifactId>httpcore5-h2</artifactId>
-            <version>5.3.6</version>
-        </dependency>
+        <!-- Apache HttpClient5 核心依赖由 Spring Boot 2.7.17 BOM 管理（httpcore5 5.1.x），无需显式声明 -->
         <!-- 日志支持 -->
         <dependency>
             <groupId>org.slf4j</groupId>
