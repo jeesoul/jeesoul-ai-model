@@ -2,11 +2,21 @@
 
 ## 概述
 
-从 1.1.0 版本开始，HTTP 客户端的所有核心参数均可通过 `application.yml` 配置文件进行调整，包括连接池大小、超时时间、连接保活等参数。
+从 1.1.0 版本开始，**同步 HTTP** 的所有核心参数均可通过 `application.yml` 配置文件进行调整，包括连接池大小、超时时间、连接保活等参数。
+
+## 适用范围
+
+**本配置仅对同步 HTTP 调用（`httpChat` / `httpChatRaw`）生效。**
+
+- **同步调用**：`AiService.httpChat()` / `httpChatRaw()` → 使用内置 Apache HttpClient 5.x → 受本配置控制
+- **流式调用**：`AiService.streamChat()` / `streamChatStr()` / `streamChatRaw()` → 使用 Spring WebFlux `WebClient` → 
+  超时写死在 `StreamHttpUtils.StreamHttpConfig`（连接 50s、响应 300s），**不受 `ai.http` 配置影响**
+
+若需调整流式超时，目前需修改 `StreamHttpUtils.java` 源码中的 `connectTimeout` / `readTimeout` 默认值。
 
 ## 默认配置
 
-如果不配置任何参数，框架将使用以下默认值（已针对 LLM 调用场景优化）：
+如果不配置任何参数，框架将使用以下默认值（已针对同步 HTTP 调用场景优化）：
 
 ```yaml
 ai:
@@ -50,7 +60,7 @@ ai:
 | `connection-request` | int | 5000 | 从连接池获取连接的超时时间（毫秒） |
 
 **调优建议**：
-- LLM 流式输出：适当调大 `socket`（如 30000-60000），因为 AI 模型响应可能较慢
+- 响应较慢的接口：调大 `socket`（如 30000-60000）
 - 网络较差：调大 `connect`（如 10000）
 - 连接池不足：调大 `connection-request` 或增加 `max-total`
 
@@ -193,10 +203,11 @@ logging:
 ## 注意事项
 
 1. **连接数设置**：`max-total` 需结合服务器和目标 API 的承载能力设置
-2. **超时时间**：LLM 流式输出可能耗时较长，`socket` 超时不宜过小
+2. **超时时间**：AI 模型响应可能较慢，`socket` 超时建议不低于 10 秒（默认已设为 10s）
 3. **重试策略**：LLM 调用通常非幂等，不建议开启 `enable-retry`
 4. **JVM 参数**：高并发场景注意 JVM 堆内存和线程数配置
 5. **向后兼容**：未配置时使用默认值，完全向后兼容历史版本
+6. **流式超时**：流式调用不受本配置影响，见上方「适用范围」章节
 
 ## 版本历史
 
