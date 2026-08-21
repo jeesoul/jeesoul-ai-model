@@ -2,23 +2,92 @@
 
 本文档记录 jeesoul-ai-model 的所有版本更新历史。
 
-## [1.1.0-beta] - 2025-01-XX
+## [1.1.0-beta3] - 2026-08-20
 
-### 🔥 紧急修复
+### 🔥 真正修复 HttpClient5 兼容性问题
 
-#### 修复 HttpClient5 依赖缺失问题
-- **问题**：1.1.0 版本在使用方运行时报错 `ClassNotFoundException: org.apache.hc.client5.http.config.ConnectionConfig`
-- **原因**：
-  - `httpcore5` 和 `httpcore5-h2` 被错误地放在 `<dependencyManagement>` 中，而不是 `<dependencies>` 中
-  - 导致依赖不会传递给使用方
-  - `httpclient5:5.5.1` 需要 `httpcore5:5.3.x`，但大多数用户环境是 `httpcore5:5.1.x`，版本不兼容
-- **修复**：
-  - 在 `<dependencies>` 中显式声明所有依赖
-  - 降级到兼容版本组合：`httpclient5:5.2.3` + `httpcore5:5.1.5` + `httpcore5-h2:5.1.5`
-  - 作为通用组件，不依赖使用方的 Spring Boot BOM
+前两次 beta 修错了方向：只改 pom 依赖版本、没改代码，因此问题依旧。本次从代码层面修掉根因。
 
-### ⚠️ 重要提示
-**请使用 1.1.0-beta 版本进行测试。** 如果已使用 1.1.0，请升级到 1.1.0-beta。稳定后将发布 1.1.1 正式版。
+#### 根因（推翻此前判断）
+- **现象**：Spring Boot 2.7.x 使用方运行期报 `NoClassDefFoundError: org/apache/hc/client5/http/config/ConnectionConfig`
+- **此前误判**：以为是「发布时遗漏依赖声明」。经核查，发布到中央仓库的 pom 里
+  `httpclient5` / `httpcore5` / `httpcore5-h2` 三个依赖一直都在，发布环节没有问题
+- **真正原因**：
+  - `ConnectionConfig` 是 httpclient5 **5.2 才引入**的类，本库 `HttpClientEngine.buildClient()` 用了它
+  - 使用方继承 `spring-boot-starter-parent:2.7.17`，其 BOM 把 `httpclient5` 管在 **5.1.4**
+  - Maven 规则：**使用方继承的 dependencyManagement 优先级高于传递依赖的版本**，
+    本库声明的 5.2.3 传过去后被强制改写为 5.1.4
+  - 5.1.4 中没有 `ConnectionConfig`，于是运行期找不到类
+- **结论**：版本的最终仲裁权在使用方 BOM 手里，只要库代码依赖 5.2+ 的 API，改版本号无法解决
+
+#### 修复内容
+- **代码**：`HttpClientEngine` 移除 `ConnectionConfig`，改用 5.1.x 就存在的等价 API
+  - `ConnectionConfig.setSocketTimeout` → `SocketConfig.setSoTimeout`
+  - `ConnectionConfig.setConnectTimeout` → `RequestConfig.setConnectTimeout`
+  - `ConnectionConfig.setTimeToLive` → `PoolingHttpClientConnectionManagerBuilder.setConnectionTimeToLive`
+- **pom**：httpclient5 声明版本对齐 Spring Boot 2.7.x BOM（`5.1.4` / `httpcore5 5.1.5`），
+  按最低支持版本编译，后续误用 5.2+ 新 API 会在编译期报错而非使用方运行期报错
+- **pom**：版本号抽为 `jeesoul.httpclient5.version` / `jeesoul.httpcore5.version` 属性，
+  便于跨版本回归验证（带 `jeesoul` 前缀，避免与 Spring Boot BOM 的同名属性混淆）
+
+#### 兼容性验证
+已实测编译 + 运行双重验证，四组运行时组合均正常：
+
+| httpclient5 | httpcore5 | 编译 | 运行 |
+|-------------|-----------|------|------|
+| 5.1.4       | 5.1.5     | 通过 | 通过 |
+| 5.2.3       | 5.2.4     | 通过 | 通过 |
+| 5.5.1       | 5.3.6     | 通过 | 通过 |
+| 5.6.4       | 5.4.3     | 通过 | 通过 |
+
+并确认编译产物字节码中已无 `ConnectionConfig` 引用（`target/classes` 与打包后的 jar 内均已核查）。
+另外搭建了一个继承 `spring-boot-starter-parent:2.7.17` 的临时使用方工程，
+不加任何补丁依赖直接引入本版本，`dependency:tree` 显示 httpclient5 被 BOM 仲裁为 5.1.4，
+连接池仍构建成功——即复现了使用方原始报错场景并确认已修复。
+
+#### JDK 版本兼容性（实测）
+- **使用方运行时**：编译产物为 Java 8 字节码（`major version 52`），
+  已实测 JDK 8 与 **JDK 17** 下加载引擎、构建连接池、发起请求全部正常；JDK 11/21 向下兼容同样可用
+- **本库构建发布**：仍须使用 JDK 8。JDK 17 下 `maven-javadoc-plugin:2.9.1` 抛
+  `ExceptionInInitializerError` 导致构建失败（该插件不认 JDK 9+），而 javadoc jar 是中央仓库必需产物。
+  实测 compiler 3.8.1、source 2.2.1、gpg 1.5 在 JDK 17 下均正常，javadoc 插件是唯一阻塞点；
+  升到 3.6.3 可解决，但 3.x 的 doclint 更严格，留待后续独立版本处理
+
+### ✅ 已发布并验证
+本版本已发布至 Maven 中央仓库，并由多个团队从中央仓库拉取实测，
+确认历史版本的 `NoClassDefFoundError: ConnectionConfig` 问题已解决。
+使用方只需引入 `jeesoul-ai-model` 一个依赖即可，业务代码零改动。后续将发布 1.1.1 正式版。
+
+### 🔴 升级必读：请删掉手工加的补丁依赖
+从 `1.1.0` / `1.1.0-beta` / `1.1.0-beta2` 升级的项目，若曾在自己 pom 里手工加过
+`httpclient5:5.2.3` / `httpcore5:5.2.4` / `httpcore5-h2:5.2.4` 这三个补丁依赖，
+**升级到 beta3 后请全部删除**。原因：
+
+1. `5.2.3` 落在 CVE-2026-64607 影响区间内（该漏洞影响 `>=5.0-alpha1, <5.6.3`），
+   删掉后会跟随使用方自己的 Spring Boot BOM 走，不再被钉死在有漏洞的版本上
+2. 直接声明的依赖优先级最高，将来升级 Spring Boot 时，BOM 抬高的 httpclient5 版本
+   会被这三行**静默顶掉**，造成「以为升级了、实际没升」
+3. 留着不会立刻报错，因此极易被遗忘——这正是它的风险所在
+
+删除后执行 `mvn clean install -U` 强制刷新依赖即可。
+
+---
+
+## [1.1.0-beta2] - 2026-08-20 ⚠️ 已废弃
+
+> ⚠️ **警告**：此版本只改了版本号、未改代码，运行期仍报 `NoClassDefFoundError: ConnectionConfig`。
+>
+> 当时误判为「发布遗漏依赖」，实际根因是代码使用了 httpclient5 5.2+ 才有的 API。
+>
+> **请使用 1.1.0-beta3。**
+
+---
+
+## [1.1.0-beta] - 2026-08-20 ⚠️ 已废弃
+
+> ⚠️ **警告**：此版本运行期报 `NoClassDefFoundError: ConnectionConfig`，与 1.1.0 同因。
+>
+> **请使用 1.1.0-beta3。**
 
 ---
 

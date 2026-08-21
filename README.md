@@ -27,7 +27,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.0-beta</version>
+    <version>1.1.0-beta3</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -36,6 +36,116 @@
     <artifactId>spring-boot-starter-webflux</artifactId>
 </dependency>
 ```
+
+**就这一个依赖，不需要再补任何 HTTP 相关依赖。** 1.1.0-beta3 已由多个团队从 Maven 中央仓库拉取实测验证通过。
+
+> ### 🔴 从 1.1.0 / 1.1.0-beta / 1.1.0-beta2 升级的项目，请务必删掉补丁依赖
+>
+> 如果你之前为绕开旧版本的 `NoClassDefFoundError: ConnectionConfig` 问题，
+> 在自己 pom 里手工加过下面这三个依赖：
+>
+> ```xml
+> <!-- ❌ beta3 起请全部删除 -->
+> <dependency>
+>     <groupId>org.apache.httpcomponents.client5</groupId>
+>     <artifactId>httpclient5</artifactId>
+>     <version>5.2.3</version>
+> </dependency>
+> <dependency>
+>     <groupId>org.apache.httpcomponents.core5</groupId>
+>     <artifactId>httpcore5</artifactId>
+>     <version>5.2.4</version>
+> </dependency>
+> <dependency>
+>     <groupId>org.apache.httpcomponents.core5</groupId>
+>     <artifactId>httpcore5-h2</artifactId>
+>     <version>5.2.4</version>
+> </dependency>
+> ```
+>
+> **请全部删除。** beta3 已从代码层面修掉根因，这三个依赖不再需要。
+>
+> **为什么强烈建议删、而不是「留着也行」：**
+>
+> 1. **会把你锁死在有漏洞的版本上** —— `5.2.3` 落在 CVE-2026-64607 的影响区间内
+>    （该漏洞影响 `>=5.0-alpha1, <5.6.3`），而删掉后你会跟随自己 Spring Boot BOM 管理的版本走
+> 2. **会屏蔽 BOM 的后续安全更新** —— 直接声明的版本优先级最高，
+>    以后你升级 Spring Boot 版本时，BOM 抬高的 httpclient5 版本会被这三行**静默顶掉**，
+>    你以为升级了，实际还停在 5.2.3
+> 3. 留着不会立刻报错，所以**很容易被忘记**，这正是它危险的地方
+>
+> 删完执行 `mvn clean install -U` 强制刷新依赖即可，业务代码零改动。
+> 详细说明见 [v1.1.0-beta3 版本说明](docs/versions/v1.1.0-beta3.md)。
+
+#### 关于 HttpClient5 版本（有安全合规要求的项目请看）
+
+本库同步 HTTP 基于 Apache HttpClient5，pom 中声明的是 `httpclient5:5.1.4` + `httpcore5:5.1.5`，
+与 Spring Boot 2.7.x 的 BOM 完全一致，这是 Apache 官方配套的版本组合。
+
+需要说明两点：
+
+1. **版本的最终决定权在你手里，不在本库。** 若你的项目继承 `spring-boot-starter-parent`，
+   Maven 规则是继承的 `dependencyManagement` 优先级高于传递依赖，
+   所以无论本库声明什么版本，实际生效的都是你的 BOM 管理的版本。
+   本库声明 5.1.4 只是为了与主流使用环境对齐，并作为编译底线，确保代码不误用高版本 API。
+2. **5.1.x 存在已知 CVE。** 其中 CVE-2026-64607（响应带非法 Content-Encoding 时连接不归还连接池，
+   可导致连接耗尽的拒绝服务）影响 5.0-alpha1 ~ 5.6.2 全部版本，修复版本为 **5.6.3**。
+   5.1.x 分支不再收到安全补丁，有安全扫描或合规要求的项目，
+   可在自己项目的 `<dependencies>` 中**直接声明**更高版本覆盖：
+
+```xml
+<!-- 按需升级 HttpClient5，本库在 5.1.x ~ 5.6.x 全区间均可正常运行 -->
+<dependency>
+    <groupId>org.apache.httpcomponents.client5</groupId>
+    <artifactId>httpclient5</artifactId>
+    <version>5.6.4</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.httpcomponents.core5</groupId>
+    <artifactId>httpcore5</artifactId>
+    <version>5.4.3</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.httpcomponents.core5</groupId>
+    <artifactId>httpcore5-h2</artifactId>
+    <version>5.4.3</version>
+</dependency>
+```
+
+升级时 `httpclient5` 与 `httpcore5` 必须成对匹配，**混搭会导致运行期找不到类**。
+两者是 Apache HttpComponents 下独立发布的子项目，补丁号各自推进，官方配套关系如下：
+
+| httpclient5 | 配套 httpcore5 | 说明 |
+|-------------|----------------|------|
+| 5.1.4       | 5.1.5          | 本库默认，对齐 Spring Boot 2.7.x BOM |
+| 5.2.3       | 5.2.4          | 已实测 |
+| 5.5.1       | 5.3.6          | 已实测 |
+| 5.6.4       | 5.4.3          | 已实测，含 CVE-2026-64607 修复，仍兼容 Java 8 |
+
+注意必须写在 `<dependencies>` 里，写进 `<dependencyManagement>` 对传递依赖无效。
+改完执行下面命令确认最终仲裁结果：
+
+```bash
+mvn dependency:tree -Dincludes=org.apache.httpcomponents.client5:*,org.apache.httpcomponents.core5:*
+```
+
+本库已实测上表全部四组运行时组合，编译与运行均正常，升级不影响功能。
+
+#### 运行环境兼容性（JDK / Spring Boot）
+
+本库编译产物为 **Java 8 字节码**，高版本 JDK 向下兼容，可直接运行，无需任何额外配置：
+
+| 使用方环境 | 是否支持 | 说明 |
+|-----------|---------|------|
+| JDK 8 | 支持 | 已实测 |
+| JDK 11 | 支持 | Java 8 字节码向下兼容 |
+| JDK 17 | 支持 | 已实测，连接池构建与请求发起均正常 |
+| JDK 21 | 支持 | Java 8 字节码向下兼容 |
+| Spring Boot 2.7.x | 支持 | 已实测，其 BOM 将 httpclient5 管在 5.1.4 |
+| Spring Boot 3.x | 支持 | 其 BOM 将 httpclient5 抬到 5.2/5.3，均在兼容区间内 |
+
+无论使用方 JDK 或 Spring Boot 的 BOM 把 httpclient5 仲裁到 5.1.x ~ 5.6.x 之间的哪个版本，
+本库都能正常工作——这正是 1.1.0-beta3 修复的核心目标。
 
 ### 2. 配置参数
 
@@ -419,11 +529,11 @@ if (AiStrategyContext.isModelRegistered("qWen")) {
 
 | 技术/框架 | 版本 | 说明 |
 |---------|------|------|
-| Java | 8+ | 项目主语言 |
-| Spring Boot | 2.7.17 | 应用框架 |
+| Java | 8+ | 编译为 Java 8 字节码，可在 JDK 8/11/17/21 运行 |
+| Spring Boot | 2.7.17 | 应用框架（兼容 2.7.x / 3.x） |
 | Spring WebFlux | 2.7.17 | 响应式编程 |
 | Lombok | Latest | 简化代码 |
-| Apache HttpClient | 5.5.1 | 同步 HTTP 客户端（内置封装） |
+| Apache HttpClient | 5.1.4 | 同步 HTTP 客户端（内置封装），代码兼容 5.1.x ~ 5.6.x |
 | SLF4J | 1.7.36 | 日志门面 |
 
 ## 📖 架构设计
@@ -456,25 +566,44 @@ src/main/java/com/jeesoul/ai/model/
 
 ## 🔄 版本历史
 
-**当前版本：1.1.0-beta**
+**当前版本：1.1.0-beta3**（已发布至 Maven 中央仓库，多团队实测验证通过）
 
-> ⚠️ **重要**：1.1.0 版本 pom 依赖声明有缺陷，新接入请使用 1.1.0-beta。已在使用 1.1.0 的项目无需换版本，按 [1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md) 在自身 pom 补三个依赖即可（已实测验证）。
+> ⚠️ **重要**：
+> - **1.1.0、1.1.0-beta、1.1.0-beta2 在 Spring Boot 2.7.x 下运行期均会报 `NoClassDefFoundError: ConnectionConfig`，请勿使用。**
+> - 新接入请直接使用 **1.1.0-beta3**，只引入本库一个依赖即可，无需任何额外配置。
+> - **从上述三个版本升级的项目，升级后请务必删掉手工加的 `httpclient5` / `httpcore5` / `httpcore5-h2` 补丁依赖**，
+>   留着会把你锁在含 CVE-2026-64607 的 5.2.3 上，并静默顶掉将来 Spring Boot BOM 的安全更新。
+>   详见上方 [添加依赖](#1-添加依赖) 的红色提示块。
 
-### v1.1.0-beta 紧急修复（当前版本）
-- 🔥 修复 1.1.0 版本的 HttpClient5 依赖缺失问题
-- 🔥 显式声明所有 HttpClient5 依赖，确保通用组件的独立性
-- 🔥 解决运行时 `ClassNotFoundException` 错误
+### v1.1.0-beta3 真正修复（当前版本）
+- 🔥 从代码层面修掉根因：`HttpClientEngine` 不再使用 httpclient5 5.2+ 才有的 `ConnectionConfig`，
+  改用 `SocketConfig` + `RequestConfig` + `setConnectionTimeToLive`（5.1.x ~ 5.6.x 全区间通用）
+- 🔥 pom 的 httpclient5 版本对齐 Spring Boot 2.7.x BOM（5.1.4 / 5.1.5），按最低支持版本编译，
+  杜绝再次误用新版 API
+- ✅ 已实测 httpclient5 5.1.4 / 5.2.3 / 5.5.1 / 5.6.4 四组运行时均正常
+- ✅ 已实测 JDK 8 与 JDK 17 运行时均正常，Spring Boot 2.7.x / 3.x 均可使用
+- ✅ **已由多个团队从 Maven 中央仓库拉取实测，确认原 `ConnectionConfig` 报错问题已解决**
+- ✅ 使用方**不再需要**手工补 httpclient5 / httpcore5 依赖，只引入本库一个依赖即可
+
+### v1.1.0-beta2、v1.1.0-beta ⚠️ 均已废弃
+- 两次 beta 都只改了 pom 依赖版本、没改代码，未能解决问题
+- 之前判断的「发布遗漏依赖」是误判：发布的 pom 里三个依赖一直都在，
+  真正原因是使用方继承的 `dependencyManagement` 优先级高于传递依赖，把版本强制改写为 5.1.4
+- **请使用 1.1.0-beta3**
 
 ### v1.1.0 主要更新 ⚠️ 需打补丁
 - ✅ 彻底移除 Hutool 依赖，自研 HTTP 封装和 Spring 工具类
 - ✅ 新增 HTTP 客户端配置支持（连接池、超时、保活参数可通过 YML 配置）
 - ✅ 完全向后兼容，对外 API 零变化
-- ⚠️ **已知问题**：pom 未传递 httpcore5 且 httpclient5 版本线不匹配，按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 补三个依赖后可正常使用
+- ⚠️ **已知问题**：代码使用了 httpclient5 5.2+ 才有的 API，在 Spring Boot 2.7.x 下运行期报错，
+  按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 补三个依赖后可正常使用（已实测验证）
 
 详细更新日志：📖 [CHANGELOG.md](CHANGELOG.md)
 
 ### 历史版本文档
-- [v1.1.0-beta 详细说明](docs/versions/v1.1.0-beta.md)
+- [v1.1.0-beta3 详细说明](docs/versions/v1.1.0-beta3.md)
+- [v1.1.0-beta2 详细说明（已废弃）](docs/versions/v1.1.0-beta2.md)
+- [v1.1.0-beta 详细说明（已废弃）](docs/versions/v1.1.0-beta.md)
 - [v1.1.0 补丁方案](docs/versions/v1.1.0-hotfix.md)
 - [v1.1.0 详细说明](docs/versions/v1.1.0.md)
 - [v1.0.9 详细说明](docs/versions/v1.0.9.md)

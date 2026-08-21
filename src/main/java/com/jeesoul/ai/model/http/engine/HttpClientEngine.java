@@ -4,7 +4,6 @@ import com.jeesoul.ai.model.config.HttpClientProperties;
 import com.jeesoul.ai.model.http.exception.HttpException;
 import com.jeesoul.ai.model.util.SpringContextHolder;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
-import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -13,6 +12,7 @@ import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuil
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.util.TimeValue;
@@ -155,19 +155,23 @@ public final class HttpClientEngine {
         HttpClientProperties.Timeout timeout = props.getTimeout();
         HttpClientProperties.KeepAlive keepAlive = props.getKeepAlive();
 
-        ConnectionConfig connectionConfig = ConnectionConfig.custom()
-                .setConnectTimeout(Timeout.ofMilliseconds(timeout.getConnect()))
-                .setSocketTimeout(Timeout.ofMilliseconds(timeout.getSocket()))
-                .setTimeToLive(TimeValue.ofSeconds(pool.getTimeToLiveSeconds()))
+        // Socket 层读取超时：SocketConfig 自 5.0 起可用，全版本区间兼容
+        SocketConfig socketConfig = SocketConfig.custom()
+                .setSoTimeout(Timeout.ofMilliseconds(timeout.getSocket()))
                 .build();
 
+        // 连接存活时长由连接管理器承担，避免依赖 5.2 才引入的 ConnectionConfig
         PoolingHttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setMaxConnTotal(pool.getMaxTotal())
                 .setMaxConnPerRoute(pool.getMaxPerRoute())
-                .setDefaultConnectionConfig(connectionConfig)
+                .setDefaultSocketConfig(socketConfig)
+                .setConnectionTimeToLive(TimeValue.ofSeconds(pool.getTimeToLiveSeconds()))
                 .build();
 
+        // 连接超时写在 RequestConfig 上：该方法在 5.2 后标记废弃但始终保留，
+        // 是 5.1.x 与 5.2+ 唯一共有的连接超时设置入口，勿改为 ConnectionConfig
         RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(Timeout.ofMilliseconds(timeout.getConnect()))
                 .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeout.getConnectionRequest()))
                 .setResponseTimeout(Timeout.ofMilliseconds(timeout.getSocket()))
                 .build();
