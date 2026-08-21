@@ -138,17 +138,6 @@ ai:
       connection-request: 10000
 ```
 
-### LLM 流式输出场景
-
-```yaml
-ai:
-  http:
-    timeout:
-      socket: 60000  # LLM 流式输出可能较慢
-    keep-alive:
-      duration: 30000
-```
-
 ### 网络不稳定场景
 
 ```yaml
