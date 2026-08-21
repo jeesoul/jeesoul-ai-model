@@ -52,8 +52,10 @@
 </dependency>
 ```
 
-**就这一个依赖，不需要再补任何 HTTP 相关依赖。** 1.1.0-beta3 已由多个团队从 Maven 中央仓库
-拉取实测验证通过。JDK 8/11/17/21、Spring Boot 2.7.x/3.x 均可运行，
+同步 HTTP 基于内置的 Apache HttpClient 5.x 封装，无需额外引入 HTTP 依赖；
+`spring-boot-starter-webflux` 仅在使用流式对话时需要。
+
+运行环境：JDK 8 及以上（8 / 11 / 17 / 21 均可），Spring Boot 2.7.x / 3.x。
 详见 📖 [兼容性说明](docs/compatibility.md)。
 
 ### 2. 配置参数
@@ -347,7 +349,7 @@ com.jeesoul.ai.model/
 
 ## 🔄 版本历史
 
-**当前版本：1.1.0-beta3**（已发布至 Maven 中央仓库，多团队实测验证通过）
+**当前版本：1.1.0-beta3**（已发布至 Maven 中央仓库）
 
 - 从代码层面修掉 `NoClassDefFoundError: ConnectionConfig` 根因，
   改用 5.1.x ~ 5.6.x 全区间通用的 API
