@@ -27,18 +27,31 @@
   - `ConnectionConfig.setTimeToLive` → `PoolingHttpClientConnectionManagerBuilder.setConnectionTimeToLive`
 - **pom**：httpclient5 声明版本对齐 Spring Boot 2.7.x BOM（`5.1.4` / `httpcore5 5.1.5`），
   按最低支持版本编译，后续误用 5.2+ 新 API 会在编译期报错而非使用方运行期报错
-- **pom**：版本号抽为 `httpclient5.version` / `httpcore5.version` 属性，便于跨版本回归验证
+- **pom**：版本号抽为 `jeesoul.httpclient5.version` / `jeesoul.httpcore5.version` 属性，
+  便于跨版本回归验证（带 `jeesoul` 前缀，避免与 Spring Boot BOM 的同名属性混淆）
 
 #### 兼容性验证
-已实测编译 + 运行双重验证，三组运行时组合均正常：
+已实测编译 + 运行双重验证，四组运行时组合均正常：
 
 | httpclient5 | httpcore5 | 编译 | 运行 |
 |-------------|-----------|------|------|
 | 5.1.4       | 5.1.5     | 通过 | 通过 |
 | 5.2.3       | 5.2.4     | 通过 | 通过 |
 | 5.5.1       | 5.3.6     | 通过 | 通过 |
+| 5.6.4       | 5.4.3     | 通过 | 通过 |
 
-并确认编译产物字节码中已无 `ConnectionConfig` 引用。
+并确认编译产物字节码中已无 `ConnectionConfig` 引用（`target/classes` 与打包后的 jar 内均已核查）。
+另外搭建了一个继承 `spring-boot-starter-parent:2.7.17` 的临时使用方工程，
+不加任何补丁依赖直接引入本版本，`dependency:tree` 显示 httpclient5 被 BOM 仲裁为 5.1.4，
+连接池仍构建成功——即复现了使用方原始报错场景并确认已修复。
+
+#### JDK 版本兼容性（实测）
+- **使用方运行时**：编译产物为 Java 8 字节码（`major version 52`），
+  已实测 JDK 8 与 **JDK 17** 下加载引擎、构建连接池、发起请求全部正常；JDK 11/21 向下兼容同样可用
+- **本库构建发布**：仍须使用 JDK 8。JDK 17 下 `maven-javadoc-plugin:2.9.1` 抛
+  `ExceptionInInitializerError` 导致构建失败（该插件不认 JDK 9+），而 javadoc jar 是中央仓库必需产物。
+  实测 compiler 3.8.1、source 2.2.1、gpg 1.5 在 JDK 17 下均正常，javadoc 插件是唯一阻塞点；
+  升到 3.6.3 可解决，但 3.x 的 doclint 更严格，留待后续独立版本处理
 
 ### ⚠️ 重要提示
 使用方**不再需要**手工补 `httpclient5` / `httpcore5` 依赖，之前加的补丁依赖可以删除。

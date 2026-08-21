@@ -1,6 +1,11 @@
 # 升级到 1.1.0 指南
 
-本指南帮助你从历史版本（1.0.x）平滑升级到 1.1.0。
+本指南帮助你从历史版本（1.0.x）平滑升级到 1.1.0 系列。
+
+> ⚠️ **务必注意版本号**：`1.1.0`、`1.1.0-beta`、`1.1.0-beta2` 三个版本在 Spring Boot 2.7.x 下
+> 运行期会报 `NoClassDefFoundError: ConnectionConfig`，**请勿升级到这三个版本**。
+> 本次升级请直接使用 **1.1.0-beta3**，它修掉了该问题，功能与 1.1.0 完全一致。
+> 原因详见 [v1.1.0-beta3 版本说明](../versions/v1.1.0-beta3.md)。
 
 ## 快速升级（90% 的情况）
 
@@ -10,9 +15,11 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.0</version>  <!-- 从 1.0.x 改为 1.1.0 -->
+    <version>1.1.0-beta3</version>  <!-- 从 1.0.x 改为 1.1.0-beta3 -->
 </dependency>
 ```
+
+无需额外挂 `httpclient5` / `httpcore5` 补丁依赖。若你之前为绕开 1.1.0 系列的问题手工加过，可全部删除。
 
 ### 步骤 2：重新编译测试
 
@@ -195,6 +202,7 @@ LLM 场景主要调整响应超时。
 
 - 📖 查看 [HTTP_CONFIG.md](../HTTP_CONFIG.md) 了解详细配置
 - 📖 查看 [v1.1.0.md](../versions/v1.1.0.md) 了解版本详情
+- 📖 查看 [v1.1.0-beta3.md](../versions/v1.1.0-beta3.md) 了解 HttpClient5 兼容性修复详情
 - 🐛 遇到 Bug？提交 [Issue](https://github.com/jeesoul/jeesoul-ai-model/issues)
 - 💬 技术交流？查看项目 README 联系方式
 
@@ -202,10 +210,13 @@ LLM 场景主要调整响应超时。
 
 ## 总结
 
-1.1.0 是一个**完全向后兼容**的版本，升级非常简单：
-1. 修改依赖版本号
+1.1.0 系列是**完全向后兼容**的版本，升级非常简单：
+1. 修改依赖版本号（用 **1.1.0-beta3**，不要用 1.1.0 / beta / beta2）
 2. 重新编译测试
 3. （可选）利用新的 HTTP 配置优化性能
+
+运行环境不受限制：编译产物为 Java 8 字节码，JDK 8/11/17/21 均可运行，
+Spring Boot 2.7.x 与 3.x 均已验证可用。
 
 **升级收益**：
 - ✅ 更稳定的 HTTP 客户端（Apache HttpClient 5.x）

@@ -17,7 +17,7 @@
 - Java 8（务必保持 Java 8 兼容，勿用更高版本语法）
 - Spring Boot 2.7.17
 - Spring WebFlux / Reactor（流式输出 `Flux`）
-- Apache HttpClient 5.5.1（同步 HTTP，内置封装于 `http` 包）
+- Apache HttpClient 5.1.4 + HttpCore 5.1.5（同步 HTTP，内置封装于 `http` 包；声明版本对齐 Spring Boot 2.7 BOM，代码兼容 5.1.x ~ 5.6.x）
 - Lombok、commons-lang3、slf4j
 
 ## 支持的模型
@@ -51,6 +51,7 @@ util/HttpUtils（同步，底层 Apache HttpClient 5.x） / StreamHttpUtils（�
 ## 本地开发环境（重要，构建/发布必读）
 
 - **JDK**：Java 8，路径 `C:\Program Files\Java\jdk-1.8`（务必用此 JDK 构建，保持 Java 8 兼容）
+- **另有 JDK 17**：路径 `D:\java\jdk\jdk-17`，仅用于兼容性验证，**不要用它构建发布**（javadoc 插件会失败，详见下「JDK 版本兼容性」）
 - **Maven**：`D:\java\maven\apache-maven-3.8.8`
 - **Maven settings**：发布与构建使用 `D:\java\maven\apache-maven-3.8.8\conf\settings-github.xml`（其中配置了中央仓库发布所需的 `mymaven` server 凭据，对应 pom 中 `central-publishing-maven-plugin` 的 `publishingServerId=mymaven`）
 - **网络代理**：本地代理 `127.0.0.1:7897`。拉取中央仓库依赖受限时追加 `-DproxyHost=127.0.0.1 -DproxyPort=7897`
@@ -65,6 +66,40 @@ export JAVA_HOME="/c/Program Files/Java/jdk-1.8"
 ```
 
 注意：pom 已显式配置 `maven-compiler-plugin` 锁定 source/target 为 Java 8；早期版本未配置时默认会按 source 1.5 编译导致 lambda 报错，勿回退此配置。
+
+## JDK 版本兼容性（实测结论，勿凭猜测改动）
+
+要分清两件事：**使用方用什么 JDK 跑**（无限制）和 **本库用什么 JDK 构建发布**（当前必须 JDK 8）。
+
+### 使用方运行时：JDK 8 / 11 / 17 / 21 均可
+
+本库编译产物是 Java 8 字节码（`major version 52`），高版本 JDK 向下兼容，可直接运行。
+已用探针实测：在 JDK 17 运行时下加载 `HttpClientEngine`、构建连接池、发起请求，全部正常。
+HttpClient5 直到 5.6.x 仍以 Java 8 为基线，不会因使用方 JDK 升级而失效。
+JDK 17/21 使用方通常搭配 Spring Boot 3.x，其 BOM 把 httpclient5 管在 5.2/5.3，已在兼容矩阵覆盖范围内。
+
+### 本库构建发布：**当前只能用 JDK 8**
+
+用 JDK 17 实测构建本项目的结果：
+
+| 环节 | JDK 8 | JDK 17 | 说明 |
+|------|-------|--------|------|
+| maven-compiler-plugin 3.8.1（source/target 8） | 通过 | 通过 | JDK 17 下仍能编出 major version 52 |
+| maven-source-plugin 2.2.1 | 通过 | 通过 | 正常产出 sources jar |
+| maven-gpg-plugin 1.5 | 通过 | 通过 | 正常产出 .asc 签名（此前预判会炸，实测未炸） |
+| **maven-javadoc-plugin 2.9.1** | 通过 | **失败** | `ExceptionInInitializerError`，插件太老不认 JDK 9+ |
+| maven-javadoc-plugin 3.6.3 | 未测 | 通过 | 实测可正常产出 javadoc jar |
+
+要点：
+- **唯一的阻塞点是 `maven-javadoc-plugin:2.9.1`**，编译器和 GPG 都没问题
+- `-Dmaven.javadoc.skip=true` 对 2.9.1 **无效**（该参数是 3.x 才支持），JDK 17 下绕不过去
+- javadoc jar 是中央仓库发布的必需产物，所以 JDK 17 下**无法完成发布**
+- 若将来要改用 JDK 17/21 构建，需先把 javadoc 插件升到 **3.5.0+**（实测 3.6.3 可用），
+  同时建议 compiler 升 3.11.0+、gpg 升 3.1.0+
+- **升级 javadoc 插件的风险**：3.x 的 doclint 校验比 2.9.1 严格得多，会暴露现有注释里的新问题。
+  这类改动**不要在临近发布时做**，应单独一个版本处理，避免再次浪费中央仓库额度
+- **JDK 21 未实测**。预期与 JDK 17 一致（同为 JDK 9+ 模块化体系），但若真要换 21 构建，须重跑上表验证
+- 结论：1.1.0 系列继续用 JDK 8 构建发布；插件升级排到后续独立版本
 
 ## 关键目录
 
@@ -138,6 +173,16 @@ done
 2. 版本号规整为语义化 `1.1.0`，pom 显式锁定 Java 8 编译
 3. Hutool HTTP → 内置 Apache HttpClient 5.x 封装（仿 Hutool 门面，无缝替换）
 4. 彻底移除 Hutool 依赖
+5. **修复 HttpClient5 版本兼容事故（beta3）**：`HttpClientEngine` 移除 5.2 才引入的 `ConnectionConfig`，
+   改用 5.1.x 就有的等价 API，使本库在 httpclient5 5.1.x ~ 5.6.x 全区间可用，
+   覆盖 Spring Boot 2.7.x / 3.x 使用方。详见上「铁律：HttpClient5 只能用 5.1.x 就存在的 API」
+6. 已实测 JDK 8 与 JDK 17 运行时均正常；构建发布仍须用 JDK 8，详见上「JDK 版本兼容性」
+
+发布过程记录（中央仓库额度已因误判浪费两次，务必引以为戒）：
+- `1.1.0`、`1.1.0-beta`、`1.1.0-beta2` 均已发到中央仓库且不可撤回，三者在 Spring Boot 2.7.x 下都会报
+  `NoClassDefFoundError: ConnectionConfig`，已在 README / CHANGELOG 标注废弃
+- beta / beta2 是同一误判（以为发布遗漏依赖声明）下的两次无效发布，只改了版本号没改代码
+- beta3 是第一个真正修掉根因的版本，验证充分后再发 1.1.1 正式版
 
 以上全部要求向后兼容、对使用方零改动。版本未发布前如有后续改动，继续归入本次 1.1.0 迭代。
 
@@ -215,6 +260,7 @@ git checkout -b 1.1.0        # 分支名 = 目标版本号（不带 v 前缀）
 - `resources/META-INF/spring.factories` 与 `AutoConfiguration.imports` 并存；`spring.factories` 在 Spring Boot 2.7 已废弃，可择机只保留后者
 - `src/test` 下暂无测试代码，对外发布库建议补充
 - 保持 Java 8 兼容，勿引入高版本语法或 API
+- **构建插件版本偏旧，待独立版本升级**：`maven-javadoc-plugin` 2.9.1（2013）、`maven-gpg-plugin` 1.5（2014）、`maven-compiler-plugin` 3.8.1（2019）。其中 javadoc 2.9.1 在 JDK 17 下直接失败，是本库无法用 JDK 17 发布的唯一原因。升级时注意 javadoc 3.x 的 doclint 更严格，需同步清理注释，务必单独一个版本做，勿与功能改动混在一起发布
 
 ## Javadoc 注释规范（发布中央仓库强制）
 

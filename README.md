@@ -93,6 +93,22 @@ mvn dependency:tree -Dincludes=org.apache.httpcomponents.client5:*,org.apache.ht
 
 本库已实测上表全部四组运行时组合，编译与运行均正常，升级不影响功能。
 
+#### 运行环境兼容性（JDK / Spring Boot）
+
+本库编译产物为 **Java 8 字节码**，高版本 JDK 向下兼容，可直接运行，无需任何额外配置：
+
+| 使用方环境 | 是否支持 | 说明 |
+|-----------|---------|------|
+| JDK 8 | 支持 | 已实测 |
+| JDK 11 | 支持 | Java 8 字节码向下兼容 |
+| JDK 17 | 支持 | 已实测，连接池构建与请求发起均正常 |
+| JDK 21 | 支持 | Java 8 字节码向下兼容 |
+| Spring Boot 2.7.x | 支持 | 已实测，其 BOM 将 httpclient5 管在 5.1.4 |
+| Spring Boot 3.x | 支持 | 其 BOM 将 httpclient5 抬到 5.2/5.3，均在兼容区间内 |
+
+无论使用方 JDK 或 Spring Boot 的 BOM 把 httpclient5 仲裁到 5.1.x ~ 5.6.x 之间的哪个版本，
+本库都能正常工作——这正是 1.1.0-beta3 修复的核心目标。
+
 ### 2. 配置参数
 
 ```yaml
@@ -475,11 +491,11 @@ if (AiStrategyContext.isModelRegistered("qWen")) {
 
 | 技术/框架 | 版本 | 说明 |
 |---------|------|------|
-| Java | 8+ | 项目主语言 |
-| Spring Boot | 2.7.17 | 应用框架 |
+| Java | 8+ | 编译为 Java 8 字节码，可在 JDK 8/11/17/21 运行 |
+| Spring Boot | 2.7.17 | 应用框架（兼容 2.7.x / 3.x） |
 | Spring WebFlux | 2.7.17 | 响应式编程 |
 | Lombok | Latest | 简化代码 |
-| Apache HttpClient | 5.5.1 | 同步 HTTP 客户端（内置封装） |
+| Apache HttpClient | 5.1.4 | 同步 HTTP 客户端（内置封装），代码兼容 5.1.x ~ 5.6.x |
 | SLF4J | 1.7.36 | 日志门面 |
 
 ## 📖 架构设计
@@ -521,10 +537,11 @@ src/main/java/com/jeesoul/ai/model/
 
 ### v1.1.0-beta3 真正修复（当前版本）
 - 🔥 从代码层面修掉根因：`HttpClientEngine` 不再使用 httpclient5 5.2+ 才有的 `ConnectionConfig`，
-  改用 `SocketConfig` + `RequestConfig` + `setConnectionTimeToLive`（5.1.x ~ 5.5.x 全区间通用）
+  改用 `SocketConfig` + `RequestConfig` + `setConnectionTimeToLive`（5.1.x ~ 5.6.x 全区间通用）
 - 🔥 pom 的 httpclient5 版本对齐 Spring Boot 2.7.x BOM（5.1.4 / 5.1.5），按最低支持版本编译，
   杜绝再次误用新版 API
-- ✅ 已实测 httpclient5 5.1.4 / 5.2.3 / 5.5.1 三组运行时均正常
+- ✅ 已实测 httpclient5 5.1.4 / 5.2.3 / 5.5.1 / 5.6.4 四组运行时均正常
+- ✅ 已实测 JDK 8 与 JDK 17 运行时均正常，Spring Boot 2.7.x / 3.x 均可使用
 - ✅ 使用方**不再需要**手工补 httpclient5 / httpcore5 依赖
 
 ### v1.1.0-beta2、v1.1.0-beta ⚠️ 均已废弃
