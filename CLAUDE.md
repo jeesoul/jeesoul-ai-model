@@ -115,6 +115,25 @@ JDK 17/21 使用方通常搭配 Spring Boot 3.x，其 BOM 把 httpclient5 管在
 - `http/` 内置 HTTP 封装：`HttpRequest`/`HttpResponse`/`Method`（仿 Hutool 链式门面）+ `engine/HttpClientEngine`（连接池引擎）+ `exception/HttpException`
 - 自动装配声明：`resources/META-INF/spring/...AutoConfiguration.imports`
 
+## 文档结构（README 为入口，细节一律外链）
+
+README 定位是「快速上手 + 一眼看全配置」，**不承载长篇细节**。原先 671 行、
+版本兼容与扩展说明各占近百行，已拆分为：
+
+- `README.md`（约 410 行）组件介绍、快速开始、支持的模型、使用指南、
+  **配置说明（模型配置与 HTTP 配置合并在同一章节，便于对照）**、API 文档、架构、版本历史、文档导航
+- `docs/compatibility.md` JDK / Spring Boot / HttpClient5 版本兼容、官方配套关系表、
+  CVE 与自行升级、旧版本补丁必须删除的原因、`NoClassDefFoundError` 排查思路
+- `docs/custom-model.md` 三种扩展方式（注解注册 / 继承 `AbstractAiService` / 手动注册）完整说明
+- `HTTP_CONFIG.md` 连接池与超时参数详解、调优流程、监控日志
+- `CHANGELOG.md` 完整更新日志；`docs/versions/` 各版本说明；`docs/migration/` 迁移指南
+
+约定：
+- 新增细节文档放 `docs/`，并在 README「文档导航」表格中登记，否则等于没写
+- README 里同一份配置不要出现两遍（旧版模型配置在「快速开始」和「配置说明」各有一份，已合并）
+- 改动 README 章节标题后，必须回查其他文档是否有指向该锚点的链接
+- 补丁提醒（README / CHANGELOG / migration / hotfix 四处）不得因精简而删除
+
 ## 扩展新模型（不改框架源码）
 
 1. 新建 Service 继承 `AbstractAiService`，实现抽象方法
