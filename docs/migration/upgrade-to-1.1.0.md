@@ -19,7 +19,20 @@
 </dependency>
 ```
 
-无需额外挂 `httpclient5` / `httpcore5` 补丁依赖。若你之前为绕开 1.1.0 系列的问题手工加过，可全部删除。
+**只需这一个依赖，不需要再补任何 HTTP 相关依赖。**
+
+> 🔴 **若你之前手工加过补丁依赖，升级后请务必删掉**
+>
+> 从 `1.1.0` / `1.1.0-beta` / `1.1.0-beta2` 过来的项目，若曾为绕开
+> `NoClassDefFoundError: ConnectionConfig` 而加过 `httpclient5:5.2.3` /
+> `httpcore5:5.2.4` / `httpcore5-h2:5.2.4`，**请全部删除**：
+>
+> - `5.2.3` 落在 CVE-2026-64607 影响区间内（`>=5.0-alpha1, <5.6.3`），留着等于把项目钉在有漏洞的版本上
+> - 直接声明的依赖优先级最高，将来升级 Spring Boot 时会**静默顶掉** BOM 抬高的版本，造成「以为升了、其实没升」
+> - 不删不会立刻报错，因此极易被遗忘
+>
+> 删完执行 `mvn clean install -U`，再用
+> `mvn dependency:tree -Dincludes=org.apache.httpcomponents.client5:*` 确认版本已跟随自己的 BOM。
 
 ### 步骤 2：重新编译测试
 

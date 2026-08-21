@@ -37,7 +37,45 @@
 </dependency>
 ```
 
-引入后无需任何额外依赖配置。若你之前为绕开 1.1.0 系列的问题手工加过 `httpclient5` / `httpcore5` 补丁依赖，可以全部删除。
+**就这一个依赖，不需要再补任何 HTTP 相关依赖。** 1.1.0-beta3 已由多个团队从 Maven 中央仓库拉取实测验证通过。
+
+> ### 🔴 从 1.1.0 / 1.1.0-beta / 1.1.0-beta2 升级的项目，请务必删掉补丁依赖
+>
+> 如果你之前为绕开旧版本的 `NoClassDefFoundError: ConnectionConfig` 问题，
+> 在自己 pom 里手工加过下面这三个依赖：
+>
+> ```xml
+> <!-- ❌ beta3 起请全部删除 -->
+> <dependency>
+>     <groupId>org.apache.httpcomponents.client5</groupId>
+>     <artifactId>httpclient5</artifactId>
+>     <version>5.2.3</version>
+> </dependency>
+> <dependency>
+>     <groupId>org.apache.httpcomponents.core5</groupId>
+>     <artifactId>httpcore5</artifactId>
+>     <version>5.2.4</version>
+> </dependency>
+> <dependency>
+>     <groupId>org.apache.httpcomponents.core5</groupId>
+>     <artifactId>httpcore5-h2</artifactId>
+>     <version>5.2.4</version>
+> </dependency>
+> ```
+>
+> **请全部删除。** beta3 已从代码层面修掉根因，这三个依赖不再需要。
+>
+> **为什么强烈建议删、而不是「留着也行」：**
+>
+> 1. **会把你锁死在有漏洞的版本上** —— `5.2.3` 落在 CVE-2026-64607 的影响区间内
+>    （该漏洞影响 `>=5.0-alpha1, <5.6.3`），而删掉后你会跟随自己 Spring Boot BOM 管理的版本走
+> 2. **会屏蔽 BOM 的后续安全更新** —— 直接声明的版本优先级最高，
+>    以后你升级 Spring Boot 版本时，BOM 抬高的 httpclient5 版本会被这三行**静默顶掉**，
+>    你以为升级了，实际还停在 5.2.3
+> 3. 留着不会立刻报错，所以**很容易被忘记**，这正是它危险的地方
+>
+> 删完执行 `mvn clean install -U` 强制刷新依赖即可，业务代码零改动。
+> 详细说明见 [v1.1.0-beta3 版本说明](docs/versions/v1.1.0-beta3.md)。
 
 #### 关于 HttpClient5 版本（有安全合规要求的项目请看）
 
@@ -528,12 +566,14 @@ src/main/java/com/jeesoul/ai/model/
 
 ## 🔄 版本历史
 
-**当前版本：1.1.0-beta3**
+**当前版本：1.1.0-beta3**（已发布至 Maven 中央仓库，多团队实测验证通过）
 
 > ⚠️ **重要**：
 > - **1.1.0、1.1.0-beta、1.1.0-beta2 在 Spring Boot 2.7.x 下运行期均会报 `NoClassDefFoundError: ConnectionConfig`，请勿使用。**
-> - 新接入请直接使用 **1.1.0-beta3**，无需任何额外配置。
-> - 仍在使用上述三个版本的项目，可按 [补丁方案](docs/versions/v1.1.0-hotfix.md) 临时绕过，或直接升级到 beta3 并删掉补丁依赖。
+> - 新接入请直接使用 **1.1.0-beta3**，只引入本库一个依赖即可，无需任何额外配置。
+> - **从上述三个版本升级的项目，升级后请务必删掉手工加的 `httpclient5` / `httpcore5` / `httpcore5-h2` 补丁依赖**，
+>   留着会把你锁在含 CVE-2026-64607 的 5.2.3 上，并静默顶掉将来 Spring Boot BOM 的安全更新。
+>   详见上方 [添加依赖](#1-添加依赖) 的红色提示块。
 
 ### v1.1.0-beta3 真正修复（当前版本）
 - 🔥 从代码层面修掉根因：`HttpClientEngine` 不再使用 httpclient5 5.2+ 才有的 `ConnectionConfig`，
@@ -542,7 +582,8 @@ src/main/java/com/jeesoul/ai/model/
   杜绝再次误用新版 API
 - ✅ 已实测 httpclient5 5.1.4 / 5.2.3 / 5.5.1 / 5.6.4 四组运行时均正常
 - ✅ 已实测 JDK 8 与 JDK 17 运行时均正常，Spring Boot 2.7.x / 3.x 均可使用
-- ✅ 使用方**不再需要**手工补 httpclient5 / httpcore5 依赖
+- ✅ **已由多个团队从 Maven 中央仓库拉取实测，确认原 `ConnectionConfig` 报错问题已解决**
+- ✅ 使用方**不再需要**手工补 httpclient5 / httpcore5 依赖，只引入本库一个依赖即可
 
 ### v1.1.0-beta2、v1.1.0-beta ⚠️ 均已废弃
 - 两次 beta 都只改了 pom 依赖版本、没改代码，未能解决问题
