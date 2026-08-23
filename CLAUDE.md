@@ -133,6 +133,11 @@ README 定位是「快速上手 + 一眼看全配置」，**不承载长篇细�
 - README 里同一份配置不要出现两遍（旧版模型配置在「快速开始」和「配置说明」各有一份，已合并）
 - 改动 README 章节标题后，必须回查其他文档是否有指向该锚点的链接
 - 补丁提醒（README / CHANGELOG / migration / hotfix 四处）不得因精简而删除
+- **清理某类错误表述时，必须全库搜索**：`grep -rn '关键词' --include=*.md .`，
+  不要只搜 README 和最相关的那一两个文件。1.1.0 迭代中修「流式超时」错误说法时，
+  第一轮只搜了 README 与 HTTP_CONFIG.md 就宣布改完，漏掉了
+  `docs/migration/upgrade-to-1.1.0.md` 里同样错误的整个小节，被用户第二次指出。
+  当前 md 文件散布于根目录、`docs/`、`docs/versions/`、`docs/migration/`、`examples/*/`、`img/` 六处
 
 ## 扩展新模型（不改框架源码）
 
@@ -182,6 +187,14 @@ done
 
 - **同步 HTTP**：基于内置 Apache HttpClient 5.x 封装，位于 `http` 包。`http/HttpRequest`、`http/HttpResponse`、`http/Method` 是仿 Hutool `cn.hutool.http.*` 的同名同签名链式门面，底层委托 `http/engine/HttpClientEngine`（连接池单例：maxConn 200、KeepAlive 20s、三级超时、不重试、空闲回收）。`util/HttpUtils` 通过这套门面发起请求，公共 API 与历史版本完全一致。
 - **流式 HTTP**：`util/StreamHttpUtils` 基于 Spring WebFlux `WebClient`，与同步链路是不同技术栈，**未纳入 Apache 封装**，保持独立。
+- **两条链路的配置互不相通（写文档前必看）**：`ai.http.*`（绑定类 `config/HttpClientProperties`）
+  **只对同步链路生效**，仅被 `http/engine/HttpClientEngine` 读取。流式链路的超时**写死**在
+  `StreamHttpUtils.StreamHttpConfig` 的 `@Builder.Default`（`connectTimeout=50000`、
+  `readTimeout=300000`），`StreamHttpUtils` 连配置类都没 import，服务层调 `builder()` 时也不设超时。
+  所以**流式超时无法通过 YML 调整**，使用方要改只能改源码。
+  教训：1.1.0 迭代期间 HTTP_CONFIG.md 与迁移指南里都写过「LLM 流式输出场景：调大
+  `ai.http.timeout.socket`」，是凭「都是 HTTP 配置」的想当然写的，用户照着配毫无效果。
+  以后写任何配置相关文档，先确认该配置项的**读取方**是谁，不要按名字归类。
 - **设计来源**：引擎设计参考用户的 `jeesoul-httpclient`（4.x），用 5.x API 重新实现，非直接复制。
 - 已彻底移除 Hutool 依赖。
 
@@ -201,7 +214,8 @@ done
 - `1.1.0`、`1.1.0-beta`、`1.1.0-beta2` 均已发到中央仓库且不可撤回，三者在 Spring Boot 2.7.x 下都会报
   `NoClassDefFoundError: ConnectionConfig`，已在 README / CHANGELOG 标注废弃
 - beta / beta2 是同一误判（以为发布遗漏依赖声明）下的两次无效发布，只改了版本号没改代码
-- **`1.1.0-beta3` 已发布至中央仓库，并由多个团队从中央仓库拉取实测验证通过，
+- **`1.1.0-beta3` 已发布至中央仓库，并由多个团队从中央仓库拉取实测验证通过（此条属内部流程信息，
+  **不要写进对外文档**，理由见下「对外文档措辞」），
   确认 `ConnectionConfig` 报错已解决，使用方只需引入本库一个依赖即可**
 - 下一步发 `1.1.1` 正式版（内容与 beta3 一致，仅去掉 beta 标记）
 
@@ -324,6 +338,29 @@ git checkout -b 1.1.0        # 分支名 = 目标版本号（不带 v 前缀）
 - `src/test` 下暂无测试代码，对外发布库建议补充
 - 保持 Java 8 兼容，勿引入高版本语法或 API
 - **构建插件版本偏旧，待独立版本升级**：`maven-javadoc-plugin` 2.9.1（2013）、`maven-gpg-plugin` 1.5（2014）、`maven-compiler-plugin` 3.8.1（2019）。其中 javadoc 2.9.1 在 JDK 17 下直接失败，是本库无法用 JDK 17 发布的唯一原因。升级时注意 javadoc 3.x 的 doclint 更严格，需同步清理注释，务必单独一个版本做，勿与功能改动混在一起发布
+
+## 对外文档措辞（README / CHANGELOG / docs 均适用）
+
+对外文档只陈述事实，不做自我背书、不带辩解情绪。用户明确指出过「一点都不专业」，
+以下是当时被点出的原句与问题（勿再犯）：
+
+- ❌「就这一个依赖，**不需要再补任何 HTTP 相关依赖**」
+  → 这句默认读者知道本库出过 `ConnectionConfig` 事故。新用户读到只会困惑
+  「我为什么要补 HTTP 依赖」，等于把事故当成快速开始的开场白。
+  ✅ 改为陈述实现：「同步 HTTP 基于内置的 Apache HttpClient 5.x 封装，无需额外引入 HTTP 依赖」
+- ❌「已由**多个团队**从中央仓库拉取**实测验证通过**」
+  → 哪些团队?外部读者无从核实，读起来像自我背书。这属于内部流程信息。
+  ✅ 只写「已发布至 Maven 中央仓库」
+- ❌「🔥 **真正**修复 HttpClient5 兼容性问题」
+  → 「真正」是对前两次 beta 的辩解，外部读者不关心我们内部发了几次。
+  ✅ 改为「修复 HttpClient5 版本兼容问题」
+- ❌「本文给出的补丁**已在真实项目中验证通过**」→ 同上，删掉即可
+
+**保留**：兼容性表格里的「已实测」有信息量——它区分了哪几行真跑过、
+哪几行靠 Java 8 字节码向下兼容推断，读者据此判断可信度，不属于背书。
+
+CLAUDE.md 是内部文档，验证过程、发布事故、团队反馈照旧详细记录，
+但**这些内容不得原样搬进对外文档**。
 
 ## Javadoc 注释规范（发布中央仓库强制）
 
