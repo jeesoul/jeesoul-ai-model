@@ -28,7 +28,7 @@ public class ModelRequestVO {
      * 具体模型版本（必填）
      * 示例:
      * - qWen: "qwen-turbo", "qwen-plus", "qwen-max"
-     * - chatgpt: "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"
+     * - chatgpt: "gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-6-astra"
      * - spark: "x1"
      * - deepSeek: "deepseek-chat", "deepseek-coder"
      */
@@ -69,7 +69,7 @@ public class ModelRequestVO {
      * 
      * 注意：
      * - 如果设置了此字段，prompt 字段会被忽略
-     * - 仅支持多模态的模型才能使用此字段（如 qwen-vl-plus）
+     * - 仅支持多模态的模型才能使用此字段（如 qwen-vl-plus、gpt-6-astra）
      * - 不同模型对多模态内容的顺序和组合要求可能不同
      */
     private List<MessageContent> contents;

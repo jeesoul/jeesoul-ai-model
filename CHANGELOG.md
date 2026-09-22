@@ -2,6 +2,19 @@
 
 本文档记录 jeesoul-ai-model 的所有版本更新历史。
 
+## [1.1.1] - 2026-09-21
+
+### 新增 OpenAI 图片识别
+
+- ChatGPT 服务支持使用 `ModelRequestVO.contents` 传递文本和图片内容。
+- 图片支持完整 URL：`MessageContent.imageUrl(String)`。
+- 图片支持二进制：`MessageContent.imageBytes(byte[], String)`，框架自动转换为 Base64 Data URL。
+- 已编码图片支持 `MessageContent.imageBase64(String, String)`；完整 Data URL 会直接保留。
+- 同步、流式和 Raw 调用使用相同的图片内容格式。
+- 保留原有纯文本请求格式和既有公共 API。
+
+详细用法见 [1.1.1 版本说明](docs/versions/v1.1.1.md)。
+
 ## [1.1.0-beta3] - 2026-08-20
 
 ### 修复 HttpClient5 版本兼容问题

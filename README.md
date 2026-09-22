@@ -42,7 +42,7 @@
 <dependency>
     <groupId>com.jeesoul</groupId>
     <artifactId>jeesoul-ai-model</artifactId>
-    <version>1.1.0-beta3</version>
+    <version>1.1.1</version>
 </dependency>
 
 <!-- 流式对话支持 -->
@@ -95,7 +95,7 @@ aiService.streamChatStr(request).subscribe(System.out::print);
 | 模型名称 | 模型标识 | 思考模式 | Token统计 | 多模态 | 其他功能 |
 |---------|---------|---------|----------|--------|---------|
 | 通义千问 | `qWen` | ✅ 是 | ✅ 是 | ❌ 否 | System Prompt、多轮对话 |
-| ChatGPT | `chatgpt` | ❌ 否 | ✅ 是 | ❌ 否 | System Prompt、多轮对话 |
+| ChatGPT | `chatgpt` | ❌ 否 | ✅ 是 | ✅ 是 | 图片 URL、二进制图片、System Prompt、多轮对话 |
 | 讯飞星火 | `spark` | ✅ 是 | ✅ 是 | ❌ 否 | System Prompt、多轮对话 |
 | DeepSeek | `deepSeek` | ✅ 是 | ✅ 是 | ❌ 否 | System Prompt、多轮对话 |
 | 豆包 | `douBao` | ✅ 是 | ✅ 同步 | ❌ 否 | System Prompt、多轮对话 |
@@ -157,6 +157,44 @@ ModelRequestVO request = new ModelRequestVO()
 更多场景见 📖 [多模态视觉示例](examples/multimodal-vision/README.md)（8 个完整 API 示例，
 含 OCR、视频理解、思考模式、流式分析）。
 
+### OpenAI 图片识别
+
+ChatGPT 服务支持 OpenAI 兼容的图片内容数组。图片可以使用完整 URL，也可以使用二进制数据；
+二进制数据需要同时提供图片媒体类型，框架会自动转换为 Base64 Data URL。
+
+```java
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+
+AiService chatGPT = FactoryModelService.create("chatgpt");
+
+// 完整图片 URL
+ModelRequestVO urlRequest = new ModelRequestVO()
+    .setModelName("chatgpt")
+    .setModel("gpt-6-astra")
+    .setContents(Arrays.asList(
+        MessageContent.imageUrl("https://example.com/image.jpg"),
+        MessageContent.text("请识别这张图片")
+    ));
+
+// 图片二进制
+byte[] imageBytes = Files.readAllBytes(Paths.get("image.jpg"));
+ModelRequestVO binaryRequest = new ModelRequestVO()
+    .setModelName("chatgpt")
+    .setModel("gpt-6-astra")
+    .setContents(Arrays.asList(
+        MessageContent.imageBytes(imageBytes, "image/jpeg"),
+        MessageContent.text("请描述图片内容")
+    ));
+
+ModelResponseVO response = chatGPT.httpChat(binaryRequest);
+System.out.println(response.getResult());
+```
+
+`MessageContent.imageBase64(String, String)` 可用于已经编码为 Base64 的图片；如果传入完整
+`data:image/...;base64,...` Data URL，框架会直接复用。同步、流式和 Raw 调用均使用同一图片参数格式。
+
 ## ⚙️ 配置说明
 
 **配置优先级**：请求参数 > YML 配置 > 代码默认值。所有参数均为可选，不配置就走默认值。
@@ -175,7 +213,7 @@ ai:
     model: qwen-turbo     # 默认模型名称
   chat-gpt:
     api-key: your-chatgpt-api-key
-    model: gpt-3.5-turbo
+    model: gpt-6-astra
   spark:
     api-key: your-spark-api-key
     model: spark-v3.5
@@ -345,12 +383,13 @@ com.jeesoul.ai.model/
 - 🔁 **重试机制** - 用 Spring Retry 或自定义重试逻辑，HTTP 层默认不重试
 - 🗂️ **缓存优化** - 相同请求可加缓存，减少 API 调用
 
-**模型选型参考**：代码生成 → DeepSeek；通用对话 → QWen / ChatGPT；图片分析 → QWenVL。
+**模型选型参考**：代码生成 → DeepSeek；通用对话 → QWen / ChatGPT；图片分析 → ChatGPT / QWenVL。
 
 ## 🔄 版本历史
 
-**当前版本：1.1.0-beta3**（已发布至 Maven 中央仓库）
+**当前版本：1.1.1**（待发布）
 
+- 新增 ChatGPT 图片识别，支持完整图片 URL、二进制图片和 Base64 图片
 - 从代码层面修掉 `NoClassDefFoundError: ConnectionConfig` 根因，
   改用 5.1.x ~ 5.6.x 全区间通用的 API
 - 已实测 httpclient5 5.1.4 / 5.2.3 / 5.5.1 / 5.6.4 四组运行时均正常
@@ -370,12 +409,14 @@ com.jeesoul.ai.model/
 | [兼容性说明](docs/compatibility.md) | JDK / Spring Boot / HttpClient5 版本兼容、CVE 与自行升级 |
 | [HTTP_CONFIG.md](HTTP_CONFIG.md) | HTTP 客户端配置详解（连接池、超时、调优） |
 | [扩展自定义模型](docs/custom-model.md) | 三种扩展方式完整说明 |
+| [1.1.1 版本说明](docs/versions/v1.1.1.md) | OpenAI 图片识别参数与迁移说明 |
 | [升级到 1.1.0-beta3](docs/migration/upgrade-to-1.1.0.md) | 从旧版本迁移指南 |
 | [Claude AI 集成示例](examples/claude-integration/README.md) | 自定义模型扩展完整示例 |
 | [多模态视觉示例](examples/multimodal-vision/README.md) | 图片 / 视频分析 8 个场景 |
 
 **版本说明文档**：
-[v1.1.0-beta3](docs/versions/v1.1.0-beta3.md)（当前）|
+[v1.1.1](docs/versions/v1.1.1.md)（当前）|
+[v1.1.0-beta3](docs/versions/v1.1.0-beta3.md) |
 [v1.1.0-beta2](docs/versions/v1.1.0-beta2.md)（已废弃）|
 [v1.1.0-beta](docs/versions/v1.1.0-beta.md)（已废弃）|
 [v1.1.0](docs/versions/v1.1.0.md) + [补丁方案](docs/versions/v1.1.0-hotfix.md) |

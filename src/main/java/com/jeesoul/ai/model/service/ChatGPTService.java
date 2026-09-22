@@ -4,6 +4,8 @@ import com.jeesoul.ai.model.config.AiProperties;
 import com.jeesoul.ai.model.config.ModelConfig;
 import com.jeesoul.ai.model.constant.AiModel;
 import com.jeesoul.ai.model.constant.AiRole;
+import com.jeesoul.ai.model.constant.ContentType;
+import com.jeesoul.ai.model.constant.ImageDetail;
 import com.jeesoul.ai.model.entity.ResultContent;
 import com.jeesoul.ai.model.exception.AiException;
 import com.jeesoul.ai.model.request.HttpChatGPTChatRequest;
@@ -11,6 +13,7 @@ import com.jeesoul.ai.model.response.HttpChatGPTChatResponse;
 import com.jeesoul.ai.model.response.StreamChatGPTResponse;
 import com.jeesoul.ai.model.util.HttpUtils;
 import com.jeesoul.ai.model.util.StreamHttpUtils;
+import com.jeesoul.ai.model.vo.MessageContent;
 import com.jeesoul.ai.model.vo.ModelRequestVO;
 import com.jeesoul.ai.model.vo.ModelResponseVO;
 import com.jeesoul.ai.model.vo.TokenUsageVO;
@@ -22,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -185,7 +189,8 @@ public class ChatGPTService extends AbstractAiService {
      */
     private HttpChatGPTChatRequest buildChatRequest(ModelRequestVO request, boolean isStream) {
         HttpChatGPTChatRequest chatRequest = new HttpChatGPTChatRequest();
-        chatRequest.setModel(getModel(request, modelConfig.getModel()));
+        String model = getModel(request, modelConfig.getModel());
+        chatRequest.setModel(model);
         chatRequest.setMessages(buildMessages(request));
         chatRequest.setStream(isStream);
         chatRequest.setTemperature(getTemperature(request, modelConfig.getTemperature()));
@@ -193,7 +198,39 @@ public class ChatGPTService extends AbstractAiService {
         chatRequest.setMaxTokens(getMaxTokens(request, modelConfig.getMaxTokens()));
         // 使用基类的参数合并方法
         mergeParamsToRequest(chatRequest, request.getParams());
+        normalizeMaxTokenParameter(chatRequest, model);
         return chatRequest;
+    }
+
+    /**
+     * 按模型版本选择最大输出token参数
+     *
+     * @param chatRequest ChatGPT请求对象
+     * @param model 模型名称
+     */
+    private void normalizeMaxTokenParameter(HttpChatGPTChatRequest chatRequest, String model) {
+        if (!supportsMaxCompletionTokens(model)) {
+            return;
+        }
+        if (chatRequest.getMaxCompletionTokens() == null) {
+            chatRequest.setMaxCompletionTokens(chatRequest.getMaxTokens());
+        }
+        chatRequest.setMaxTokens(null);
+    }
+
+    /**
+     * 判断模型是否使用新版最大输出token参数
+     *
+     * @param model 模型名称
+     * @return true表示使用max_completion_tokens
+     */
+    private boolean supportsMaxCompletionTokens(String model) {
+        if (model == null) {
+            return false;
+        }
+        String normalized = model.trim().toLowerCase(Locale.ENGLISH);
+        return normalized.startsWith("gpt-5") || normalized.startsWith("chatgpt-5")
+                || normalized.startsWith("gpt-6") || normalized.startsWith("chatgpt-6");
     }
 
     /**
@@ -220,9 +257,91 @@ public class ChatGPTService extends AbstractAiService {
             }
         }
 
-        // 否则使用原来的逻辑：添加用户消息
-        messages.add(createMessage(AiRole.USER, request.getPrompt()));
+        // 优先使用contents构建OpenAI多模态用户消息
+        if (!CollectionUtils.isEmpty(request.getContents())) {
+            HttpChatGPTChatRequest.Message message = new HttpChatGPTChatRequest.Message();
+            message.setRole(AiRole.USER.getValue());
+            message.setContentParts(buildContentParts(request.getContents()));
+            messages.add(message);
+        } else {
+            // 否则使用原来的逻辑：添加用户消息
+            messages.add(createMessage(AiRole.USER, request.getPrompt()));
+        }
         return messages;
+    }
+
+    /**
+     * 将统一消息内容转换为OpenAI内容片段
+     *
+     * @param contents 统一消息内容列表
+     * @return OpenAI内容片段列表
+     */
+    private List<HttpChatGPTChatRequest.ContentPart> buildContentParts(List<MessageContent> contents) {
+        List<HttpChatGPTChatRequest.ContentPart> parts = new ArrayList<>();
+        for (MessageContent content : contents) {
+            if (content == null || content.getType() == null) {
+                continue;
+            }
+
+            if (ContentType.TEXT == content.getType()) {
+                if (content.getText() != null) {
+                    HttpChatGPTChatRequest.ContentPart part = new HttpChatGPTChatRequest.ContentPart();
+                    part.setType(ContentType.TEXT.getValue());
+                    part.setText(content.getText());
+                    parts.add(part);
+                }
+            } else if (ContentType.IMAGE_URL == content.getType()) {
+                if (content.getImageUrl() != null && content.getImageUrl().getUrl() != null) {
+                    parts.add(createImagePart(content.getImageUrl().getUrl(),
+                            content.getImageUrl().getDetail()));
+                }
+            } else if (ContentType.IMAGE_BASE64 == content.getType()) {
+                if (content.getBase64() != null) {
+                    parts.add(createImagePart(toDataUrl(content), null));
+                }
+            } else {
+                log.warn("[ChatGPT] 不支持的多模态内容类型: {}", content.getType());
+            }
+        }
+        return parts;
+    }
+
+    /**
+     * 创建OpenAI图片内容片段
+     *
+     * @param url 图片URL或Data URL
+     * @param detail 图片详细度
+     * @return 图片内容片段
+     */
+    private HttpChatGPTChatRequest.ContentPart createImagePart(String url, ImageDetail detail) {
+        HttpChatGPTChatRequest.ContentPart part = new HttpChatGPTChatRequest.ContentPart();
+        part.setType(ContentType.IMAGE_URL.getValue());
+        HttpChatGPTChatRequest.ContentPart.ImageUrl imageUrl =
+                new HttpChatGPTChatRequest.ContentPart.ImageUrl();
+        imageUrl.setUrl(url);
+        if (detail != null) {
+            imageUrl.setDetail(detail.getValue());
+        }
+        part.setImageUrl(imageUrl);
+        return part;
+    }
+
+    /**
+     * 将Base64图片转换为OpenAI Data URL
+     *
+     * @param content Base64图片内容
+     * @return OpenAI Data URL
+     */
+    private String toDataUrl(MessageContent content) {
+        String base64 = content.getBase64().trim();
+        if (base64.startsWith("data:")) {
+            return base64;
+        }
+        String mimeType = content.getMimeType();
+        if (mimeType == null || mimeType.trim().isEmpty()) {
+            mimeType = "image/jpeg";
+        }
+        return "data:" + mimeType.trim() + ";base64," + base64;
     }
 
     /**

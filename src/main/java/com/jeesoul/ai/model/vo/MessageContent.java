@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Base64;
 import java.util.Map;
 
 /**
@@ -40,6 +41,11 @@ public class MessageContent {
      * Base64图片数据（当type=image_base64时使用）
      */
     private String base64;
+
+    /**
+     * 图片媒体类型（当type=image_base64时使用）
+     */
+    private String mimeType;
     
     /**
      * 音频URL（当type=audio_url时使用）
@@ -119,6 +125,36 @@ public class MessageContent {
         content.setType(ContentType.IMAGE_BASE64);
         content.setBase64(base64Data);
         return content;
+    }
+
+    /**
+     * 创建带媒体类型的Base64图片内容
+     *
+     * @param base64Data Base64编码的图片数据
+     * @param mimeType 图片媒体类型，例如image/png
+     * @return MessageContent对象
+     */
+    public static MessageContent imageBase64(String base64Data, String mimeType) {
+        MessageContent content = imageBase64(base64Data);
+        content.setMimeType(mimeType);
+        return content;
+    }
+
+    /**
+     * 创建二进制图片内容
+     *
+     * @param imageBytes 图片二进制数据
+     * @param mimeType 图片媒体类型，例如image/jpeg
+     * @return MessageContent对象
+     */
+    public static MessageContent imageBytes(byte[] imageBytes, String mimeType) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new IllegalArgumentException("图片二进制数据不能为空");
+        }
+        if (mimeType == null || mimeType.trim().isEmpty()) {
+            throw new IllegalArgumentException("图片媒体类型不能为空");
+        }
+        return imageBase64(Base64.getEncoder().encodeToString(imageBytes), mimeType);
     }
     
     /**
